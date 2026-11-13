@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { Eye, EyeOff, ExternalLink, Pencil, Plus, Search, Star, Trash2 } from 'lucide-react'
+import { Eye, EyeOff, ExternalLink, Images, Pencil, Plus, Search, Star, Trash2 } from 'lucide-react'
 import { adminDeleteProduct, adminGetCollections, adminGetProducts, adminUpdateProduct } from '../../services/api'
 import { useAsync } from '../../hooks/useAsync'
 import ImageBox from '../../components/common/ImageBox'
@@ -83,9 +83,14 @@ function AdminProducts() {
           <h1 className="text-2xl font-bold text-walnut">Products</h1>
           <p className="mt-1 text-sm text-ink/60">{pagination ? `${pagination.total} products` : 'Your furniture catalogue'}</p>
         </div>
-        <Link to="/admin/products/new" className="inline-flex items-center gap-2 rounded-full bg-walnut px-5 py-2 text-sm font-medium text-white">
-          <Plus size={16} /> Add product
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          <Link to="/admin/products/bulk" className="inline-flex items-center gap-2 rounded-full border border-walnut/40 bg-white px-5 py-2 text-sm font-medium text-walnut">
+            <Images size={16} /> Bulk add
+          </Link>
+          <Link to="/admin/products/new" className="inline-flex items-center gap-2 rounded-full bg-walnut px-5 py-2 text-sm font-medium text-white">
+            <Plus size={16} /> Add product
+          </Link>
+        </div>
       </div>
 
       <p className="mt-4 rounded-xl bg-beige/60 px-4 py-3 text-xs text-ink/80">
