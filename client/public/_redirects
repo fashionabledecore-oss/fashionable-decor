@@ -1,0 +1,8 @@
+# Netlify rules: /api and /sitemap.xml go to the Render backend, everything else opens the React app.
+# TODO: Replace REPLACE-WITH-YOUR-BACKEND.onrender.com with the real Render backend URL.
+
+/api/*        https://REPLACE-WITH-YOUR-BACKEND.onrender.com/api/:splat    200
+/sitemap.xml  https://REPLACE-WITH-YOUR-BACKEND.onrender.com/api/sitemap.xml  200
+
+# SPA fallback: every other route opens the React app
+/*            /index.html    200
