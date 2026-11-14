@@ -17,6 +17,7 @@ function AdminReviews() {
       intro="Customer reviews for the home page. The section only appears once at least 3 reviews are active."
       note="Only add reviews that real customers have given, with their permission."
       addLabel="Add review"
+      itemName={(item) => `review by ${item.customerName}`}
       emptyText="No reviews yet. The reviews section stays hidden on the website until you add at least 3."
       toForm={(item) => ({
         customerName: item?.customerName ?? '',

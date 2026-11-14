@@ -15,7 +15,10 @@ import ErrorState from '../../components/common/ErrorState'
 import FormAlert from '../components/FormAlert'
 import ImageUploader from '../components/ImageUploader'
 import OrderButtons from '../components/OrderButtons'
+import EditingBanner from '../components/EditingBanner'
+import AdminToast from '../components/AdminToast'
 import { saveNewOrder } from '../reorder'
+import { rowState, useEditFocus, useSavedRow } from '../editFeedback'
 
 function CategoryForm({ initial, collections, defaultCollectionId, onSaved, onCancel }) {
   const editing = Boolean(initial?._id)
@@ -67,9 +70,8 @@ function CategoryForm({ initial, collections, defaultCollectionId, onSaved, onCa
     setAlert('')
     setServerErrors(null)
     try {
-      if (editing) await adminUpdateCategory(initial._id, payload)
-      else await adminCreateCategory(payload)
-      onSaved(editing ? 'Category updated.' : 'Category added.')
+      const saved = editing ? await adminUpdateCategory(initial._id, payload) : await adminCreateCategory(payload)
+      onSaved(editing ? `"${payload.name}" saved.` : `"${payload.name}" added.`, saved?._id ?? initial?._id)
     } catch (err) {
       setAlert(err.message)
       setServerErrors(err.errors || null)
@@ -79,7 +81,7 @@ function CategoryForm({ initial, collections, defaultCollectionId, onSaved, onCa
   }
 
   return (
-    <form onSubmit={submit} noValidate className="mt-6 space-y-4 rounded-2xl bg-white p-6 shadow-sm">
+    <form onSubmit={submit} noValidate className="space-y-4 rounded-2xl bg-white p-4 shadow-sm sm:p-6">
       <h2 className="text-lg font-semibold text-walnut">{editing ? 'Edit category' : 'Add category'}</h2>
 
       <div className="grid gap-4 md:grid-cols-2">
@@ -131,7 +133,10 @@ function CategoryForm({ initial, collections, defaultCollectionId, onSaved, onCa
       </div>
 
       <div>
-        <p className="mb-2 text-sm font-medium text-ink">Category image</p>
+        <p className="text-sm font-medium text-ink">Category cover photo</p>
+        <p className="mb-2 text-xs text-ink/50">
+          Shown on this category&apos;s card. It is not a product: to show products, add them on the Products page.
+        </p>
         <ImageUploader
           images={values.image ? [values.image] : []}
           onChange={(arr) =>
@@ -172,11 +177,14 @@ function AdminCategories() {
     `admin-categories:${filter}:${version}`,
   )
   const reload = () => setVersion((v) => v + 1)
+  const formRef = useEditFocus(editing === 'new' ? 'new' : editing?._id)
+  const [savedId, markSaved] = useSavedRow(Boolean(data) && !loading)
 
-  const saved = (message) => {
+  const saved = (message, id) => {
     setEditing(null)
     setProblem('')
     setNotice(message)
+    markSaved(id)
     reload()
   }
 
@@ -185,6 +193,7 @@ function AdminCategories() {
     setProblem('')
     try {
       await adminUpdateCategory(c._id, { isActive: !c.isActive })
+      setNotice(c.isActive ? `"${c.name}" is now hidden from the website.` : `"${c.name}" is now visible on the website.`)
       reload()
     } catch (err) {
       setProblem(err.message)
@@ -209,6 +218,7 @@ function AdminCategories() {
     setProblem('')
     try {
       await saveNewOrder(items, index, dir, adminUpdateCategory)
+      setNotice(`Order saved. "${items[index].name}" moved ${dir < 0 ? 'up' : 'down'}.`)
       reload()
     } catch (err) {
       setProblem(err.message)
@@ -250,18 +260,20 @@ function AdminCategories() {
         </p>
       )}
 
-      {notice && <p className="mt-4 rounded-xl bg-sage/20 px-4 py-3 text-sm text-ink">{notice}</p>}
-      {problem && <p className="mt-4 rounded-xl bg-danger-soft px-4 py-3 text-sm text-danger" role="alert">{problem}</p>}
+      <AdminToast notice={notice} problem={problem} onClose={() => { setNotice(''); setProblem('') }} />
 
       {editing && collections.data && (
-        <CategoryForm
-          key={editing === 'new' ? 'new' : editing._id}
-          initial={editing === 'new' ? null : editing}
-          collections={collections.data}
-          defaultCollectionId={filter}
-          onSaved={saved}
-          onCancel={() => setEditing(null)}
-        />
+        <div ref={formRef} className="mt-6 scroll-mt-4 space-y-3">
+          <EditingBanner name={editing === 'new' ? 'new category' : editing.name} isNew={editing === 'new'} onCancel={() => setEditing(null)} />
+          <CategoryForm
+            key={editing === 'new' ? 'new' : editing._id}
+            initial={editing === 'new' ? null : editing}
+            collections={collections.data}
+            defaultCollectionId={filter}
+            onSaved={saved}
+            onCancel={() => setEditing(null)}
+          />
+        </div>
       )}
 
       {collections.data && collections.data.length > 0 && (
@@ -295,11 +307,18 @@ function AdminCategories() {
           <h2 className="text-sm font-bold tracking-wide text-ink/60 uppercase">{g.name}</h2>
           <ul className="mt-2 space-y-2">
             {g.items.map((c, i) => (
-              <li key={c._id} className={`rounded-2xl bg-white p-3 shadow-sm ${c.isActive ? '' : 'opacity-60'}`}>
+              <li
+                key={c._id}
+                id={`row-${c._id}`}
+                className={`scroll-mt-4 rounded-2xl bg-white p-3 shadow-sm transition ${c.isActive ? '' : 'opacity-60'} ${rowState(c._id, editing, savedId)}`}
+              >
                 <div className="flex items-center gap-3">
                   <ImageBox src={c.image?.url} alt={c.name} className="h-12 w-16 shrink-0 rounded-lg" width={160} />
                   <div className="min-w-0 flex-1">
-                    <p className="truncate font-medium text-ink">{c.name}</p>
+                    <p className="truncate font-medium text-ink">
+                      {c.name}
+                      {editing?._id === c._id && <span className="ml-2 rounded-full bg-terracotta px-2 py-0.5 text-xs text-white">Editing</span>}
+                    </p>
                     <p className="text-xs text-ink/50">
                       /{c.slug} · {c.productCount} {c.productCount === 1 ? 'product' : 'products'}
                     </p>

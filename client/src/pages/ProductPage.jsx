@@ -13,8 +13,7 @@ import ImageBox from '../components/common/ImageBox'
 import PhotoFrame from '../components/common/PhotoFrame'
 import Seo from '../components/common/Seo'
 import NotFound from '../components/common/NotFound'
-import Loader from '../components/common/Loader'
-import ErrorState from '../components/common/ErrorState'
+import LoadState from '../components/common/LoadState'
 import WhatsAppButton from '../components/common/WhatsAppButton'
 import LeadForm from '../components/forms/LeadForm'
 import ProductGrid from '../components/products/ProductGrid'
@@ -101,8 +100,9 @@ function ProductDetail({ product }) {
               src={activeImage?.url}
               alt={activeImage?.alt || `${product.name} - ${category.name} by ${siteConfig.name}`}
               width={720}
-              ratio={0.8}
-              aspect={0.8}
+              ratio={3 / 4}
+              aspect={3 / 4}
+              fit="contain"
               priority
               className="w-full"
             />
@@ -120,9 +120,10 @@ function ProductDetail({ product }) {
                       <ImageBox
                         src={img.url}
                         alt={img.alt || `${product.name} - photo ${i + 1}`}
-                        className="h-16 w-20 rounded-[12px]"
+                        className="h-15 w-20 rounded-[12px]"
                         width={80}
-                        ratio={0.8}
+                        ratio={3 / 4}
+                        fit="contain"
                       />
                     </button>
                   </li>
@@ -232,7 +233,8 @@ function ProductDetail({ product }) {
 
 function ProductPage() {
   const { collectionSlug, categorySlug, productSlug } = useParams()
-  const { data: product, loading, error } = useAsync(() => getProduct(productSlug), `product:${productSlug}`)
+  const state = useAsync(() => getProduct(productSlug), `product:${productSlug}`)
+  const { data: product, loading, error } = state
 
   // (MainLayout product page par floating button nahi dikhata; yahan product ke naam ke saath dikhta hai.)
   const valid =
@@ -240,9 +242,9 @@ function ProductPage() {
   const message = valid ? `Hello, I want to enquire about ${product.name}. ${window.location.href}` : undefined
 
   let content
-  if (loading) content = <Loader fullPage />
+  if (loading) content = <LoadState state={state} fullPage />
   else if (error?.status === 404 || (!error && !valid)) content = <NotFound message="This product does not exist." />
-  else if (error) content = <ErrorState fullPage message={error.message} />
+  else if (error) content = <LoadState state={state} fullPage />
   else content = <ProductDetail key={product.slug} product={product} />
 
   return (

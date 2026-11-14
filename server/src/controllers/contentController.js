@@ -8,6 +8,7 @@ import { ApiError } from '../utils/ApiError.js'
 import { parseOrThrow } from '../utils/validate.js'
 import { assertObjectId } from '../utils/objectId.js'
 import { deleteImage } from '../services/imageService.js'
+import { getActiveCategoryIds } from '../services/catalogueService.js'
 import {
   reviewSchema,
   reviewUpdateSchema,
@@ -101,11 +102,13 @@ export async function getInstagramPosts(req, res) {
 
 // GET /api/admin/overview (dashboard ke catalogue aur content counts)
 export async function getOverview(req, res) {
+  // ("Visible" = jo sach mein website par dikhte hain: product, uski category aur collection teeno active.)
+  const visibleCategoryIds = await getActiveCategoryIds()
   const [collections, categories, products, activeProducts, reviews, instagram, leads] = await Promise.all([
     ProductCollection.countDocuments(),
     Category.countDocuments(),
     Product.countDocuments(),
-    Product.countDocuments({ isActive: true }),
+    Product.countDocuments({ isActive: true, categoryId: { $in: visibleCategoryIds } }),
     Review.countDocuments({ isActive: true }),
     InstagramPost.countDocuments({ isActive: true }),
     Lead.countDocuments(),

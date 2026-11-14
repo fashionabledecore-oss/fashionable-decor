@@ -23,7 +23,16 @@ function buildUrl(path, params) {
 
 const NETWORK_MESSAGE = 'Could not reach the server. Please check your connection and try again.'
 
-async function request(path, { method = 'GET', body, form, params } = {}) {
+// (Render ka free server so jaata hai; jaagte waqt proxy 502/503/504 deta hai ya connection toot jata hai.
+//  Sirf GET dobara bhejte hain, kyunki wo kuch badalta nahi.)
+const RETRY_STATUSES = new Set([0, 502, 503, 504])
+const RETRY_DELAYS_MS = [3000, 8000]
+const GET_TIMEOUT_MS = 70000
+const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
+
+async function requestOnce(path, { method, body, form, params }) {
+  const controller = method === 'GET' ? new AbortController() : null
+  const timer = controller ? setTimeout(() => controller.abort(), GET_TIMEOUT_MS) : null
   let res
   try {
     res = await fetch(buildUrl(path, params), {
@@ -31,9 +40,12 @@ async function request(path, { method = 'GET', body, form, params } = {}) {
       credentials: 'include', // (login cookie bhejne ke liye)
       headers: body ? { 'Content-Type': 'application/json' } : undefined,
       body: form ?? (body ? JSON.stringify(body) : undefined),
+      signal: controller?.signal,
     })
   } catch {
     throw new ApiError(NETWORK_MESSAGE, 0)
+  } finally {
+    clearTimeout(timer)
   }
 
   const json = await res.json().catch(() => null)
@@ -41,6 +53,18 @@ async function request(path, { method = 'GET', body, form, params } = {}) {
     throw new ApiError(json?.message || 'Something went wrong.', res.status, json?.errors)
   }
   return json
+}
+
+async function request(path, { method = 'GET', body, form, params } = {}) {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await requestOnce(path, { method, body, form, params })
+    } catch (err) {
+      const canRetry = method === 'GET' && RETRY_STATUSES.has(err.status) && attempt < RETRY_DELAYS_MS.length
+      if (!canRetry) throw err
+      await wait(RETRY_DELAYS_MS[attempt])
+    }
+  }
 }
 
 // ---------------- Public APIs ----------------

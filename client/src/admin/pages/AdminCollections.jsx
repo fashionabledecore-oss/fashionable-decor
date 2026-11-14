@@ -14,7 +14,10 @@ import ErrorState from '../../components/common/ErrorState'
 import FormAlert from '../components/FormAlert'
 import ImageUploader from '../components/ImageUploader'
 import OrderButtons from '../components/OrderButtons'
+import EditingBanner from '../components/EditingBanner'
+import AdminToast from '../components/AdminToast'
 import { saveNewOrder } from '../reorder'
+import { rowState, useEditFocus, useSavedRow } from '../editFeedback'
 
 function CollectionForm({ initial, onSaved, onCancel }) {
   const editing = Boolean(initial?._id)
@@ -62,9 +65,8 @@ function CollectionForm({ initial, onSaved, onCancel }) {
     setAlert('')
     setServerErrors(null)
     try {
-      if (editing) await adminUpdateCollection(initial._id, payload)
-      else await adminCreateCollection(payload)
-      onSaved(editing ? 'Collection updated.' : 'Collection added.')
+      const saved = editing ? await adminUpdateCollection(initial._id, payload) : await adminCreateCollection(payload)
+      onSaved(editing ? `"${payload.name}" saved.` : `"${payload.name}" added.`, saved?._id ?? initial?._id)
     } catch (err) {
       setAlert(err.message)
       setServerErrors(err.errors || null)
@@ -74,7 +76,7 @@ function CollectionForm({ initial, onSaved, onCancel }) {
   }
 
   return (
-    <form onSubmit={submit} noValidate className="mt-6 space-y-4 rounded-2xl bg-white p-6 shadow-sm">
+    <form onSubmit={submit} noValidate className="space-y-4 rounded-2xl bg-white p-4 shadow-sm sm:p-6">
       <h2 className="text-lg font-semibold text-walnut">{editing ? 'Edit collection' : 'Add collection'}</h2>
 
       <div className="grid gap-4 md:grid-cols-2">
@@ -106,7 +108,10 @@ function CollectionForm({ initial, onSaved, onCancel }) {
       </div>
 
       <div>
-        <p className="mb-2 text-sm font-medium text-ink">Banner image</p>
+        <p className="text-sm font-medium text-ink">Tile cover photo</p>
+        <p className="mb-2 text-xs text-ink/50">
+          Shown on the home page tile. It is not a product: to show products, add them on the Products page.
+        </p>
         <ImageUploader
           images={values.banner ? [values.banner] : []}
           onChange={(arr) =>
@@ -146,11 +151,14 @@ function AdminCollections() {
 
   const { data, loading, error } = useAsync(adminGetCollections, `admin-collections:${version}`)
   const reload = () => setVersion((v) => v + 1)
+  const formRef = useEditFocus(editing === 'new' ? 'new' : editing?._id)
+  const [savedId, markSaved] = useSavedRow(Boolean(data) && !loading)
 
-  const saved = (message) => {
+  const saved = (message, id) => {
     setEditing(null)
     setProblem('')
     setNotice(message)
+    markSaved(id)
     reload()
   }
 
@@ -159,6 +167,7 @@ function AdminCollections() {
     setProblem('')
     try {
       await adminUpdateCollection(c._id, { isActive: !c.isActive })
+      setNotice(c.isActive ? `"${c.name}" is now hidden from the website.` : `"${c.name}" is now visible on the website.`)
       reload()
     } catch (err) {
       setProblem(err.message)
@@ -170,6 +179,7 @@ function AdminCollections() {
     setProblem('')
     try {
       await saveNewOrder(data, index, dir, adminUpdateCollection)
+      setNotice(`Order saved. "${data[index].name}" moved ${dir < 0 ? 'up' : 'down'}.`)
       reload()
     } catch (err) {
       setProblem(err.message)
@@ -207,16 +217,18 @@ function AdminCollections() {
         )}
       </div>
 
-      {notice && <p className="mt-4 rounded-xl bg-sage/20 px-4 py-3 text-sm text-ink">{notice}</p>}
-      {problem && <p className="mt-4 rounded-xl bg-danger-soft px-4 py-3 text-sm text-danger" role="alert">{problem}</p>}
+      <AdminToast notice={notice} problem={problem} onClose={() => { setNotice(''); setProblem('') }} />
 
       {editing && (
-        <CollectionForm
-          key={editing === 'new' ? 'new' : editing._id}
-          initial={editing === 'new' ? null : editing}
-          onSaved={saved}
-          onCancel={() => setEditing(null)}
-        />
+        <div ref={formRef} className="mt-6 scroll-mt-4 space-y-3">
+          <EditingBanner name={editing === 'new' ? 'new collection' : editing.name} isNew={editing === 'new'} onCancel={() => setEditing(null)} />
+          <CollectionForm
+            key={editing === 'new' ? 'new' : editing._id}
+            initial={editing === 'new' ? null : editing}
+            onSaved={saved}
+            onCancel={() => setEditing(null)}
+          />
+        </div>
       )}
 
       {loading && <Loader />}
@@ -230,11 +242,18 @@ function AdminCollections() {
       {data && data.length > 0 && (
         <ul className="mt-6 space-y-2">
           {data.map((c, i) => (
-            <li key={c._id} className={`rounded-2xl bg-white p-3 shadow-sm ${c.isActive ? '' : 'opacity-60'}`}>
+            <li
+              key={c._id}
+              id={`row-${c._id}`}
+              className={`scroll-mt-4 rounded-2xl bg-white p-3 shadow-sm transition ${c.isActive ? '' : 'opacity-60'} ${rowState(c._id, editing, savedId)}`}
+            >
               <div className="flex items-center gap-3">
                 <ImageBox src={c.bannerImage?.url} alt={c.name} className="h-12 w-16 shrink-0 rounded-lg" width={160} />
                 <div className="min-w-0 flex-1">
-                  <p className="truncate font-medium text-ink">{c.name}</p>
+                  <p className="truncate font-medium text-ink">
+                    {c.name}
+                    {editing?._id === c._id && <span className="ml-2 rounded-full bg-terracotta px-2 py-0.5 text-xs text-white">Editing</span>}
+                  </p>
                   <p className="text-xs text-ink/50">
                     /{c.slug} · {c.categoryCount} {c.categoryCount === 1 ? 'category' : 'categories'}
                   </p>

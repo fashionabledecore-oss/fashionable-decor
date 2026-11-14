@@ -4,25 +4,23 @@ import { getWhatsAppLink } from '../../config/site'
 import { productPath, mainImage } from '../../utils/paths'
 import ImageBox from '../common/ImageBox'
 
-// (Teen alag shapes, taaki grid ek jaisa na dikhe. ratio = height / width.)
-const RATIOS = [5 / 4, 1, 4 / 5]
-
-function ProductCard({ product, index = 0 }) {
+// (Har card ka photo box 4:3 hai. Photo kisi bhi size/shape ki ho, poori dikhti hai (object-contain), crop nahi.)
+function ProductCard({ product }) {
   const path = productPath(product)
   const image = mainImage(product)
-  const ratio = RATIOS[index % RATIOS.length]
   const message = `Hello, I want to enquire about ${product.name}. ${window.location.origin}${path}`
   const alt = image?.alt || [product.name, product.category?.name].filter(Boolean).join(' - ')
 
   return (
-    <article className="group break-inside-avoid pb-10">
-      <Link to={path} className="block overflow-hidden rounded-[28px]" style={{ aspectRatio: `1 / ${ratio}` }}>
+    <article className="group flex flex-col">
+      <Link to={path} className="block overflow-hidden rounded-[28px]">
         <ImageBox
           src={image?.url}
           alt={alt}
-          width={420}
-          ratio={ratio}
-          className="h-full w-full transition-transform duration-500 motion-safe:group-hover:scale-[1.03]"
+          width={480}
+          ratio={3 / 4}
+          fit="contain"
+          className="aspect-[4/3] w-full rounded-[28px] transition-transform duration-500 motion-safe:group-hover:scale-[1.02]"
         />
       </Link>
       <div className="mt-4 px-1">
@@ -39,7 +37,7 @@ function ProductCard({ product, index = 0 }) {
           href={getWhatsAppLink(message)}
           target="_blank"
           rel="noreferrer"
-          className="mt-3 inline-flex items-center gap-2 text-sm font-bold text-terracotta underline-offset-4 hover:underline"
+          className="mt-3 inline-flex min-h-11 items-center gap-2 text-sm font-bold text-terracotta underline-offset-4 hover:underline"
         >
           <MessageCircle size={16} /> Ask about this on WhatsApp
         </a>

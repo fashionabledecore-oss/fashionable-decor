@@ -127,9 +127,13 @@ function ProductFormInner({ initial, categories }) {
     setAlert('')
     setServerErrors(null)
     try {
-      if (editing) await adminUpdateProduct(initial._id, payload)
-      else await adminCreateProduct(payload)
-      navigate('/admin/products', { state: { notice: editing ? 'Product updated.' : 'Product added.' } })
+      const saved = editing ? await adminUpdateProduct(initial._id, payload) : await adminCreateProduct(payload)
+      navigate('/admin/products', {
+        state: {
+          notice: editing ? `"${payload.name}" saved.` : `"${payload.name}" added.`,
+          savedId: saved?._id ?? initial?._id,
+        },
+      })
     } catch (err) {
       setAlert(err.message)
       setServerErrors(err.errors || null)
@@ -145,7 +149,15 @@ function ProductFormInner({ initial, categories }) {
         <Link to="/admin/products" className="text-sm text-walnut hover:underline">
           Back to products
         </Link>
-        <h1 className="mt-2 text-2xl font-bold text-walnut">{editing ? `Edit ${initial.name}` : 'Add product'}</h1>
+        <h1 className="mt-2 text-2xl font-bold break-words text-walnut">
+          {editing ? (
+            <>
+              <span className="text-ink/60">Editing:</span> {initial.name}
+            </>
+          ) : (
+            'Add product'
+          )}
+        </h1>
       </div>
 
       <FormAlert message={alert} errors={serverErrors} />

@@ -221,6 +221,12 @@
     background-color: color-mix(in oklab, var(--ph, var(--color-coral)) 32%, var(--color-blush));
     color: color-mix(in oklab, var(--ph, var(--color-coral)) 45%, var(--color-ink));
   }
+
+  /* Real photo shown whole (object-contain): soft warm clay background fills the empty sides. */
+  .photo-well {
+    background-color: color-mix(in oklab, var(--color-beige) 70%, var(--color-white));
+    box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--color-line) 70%, transparent);
+  }
 }
 
 @keyframes wobble {

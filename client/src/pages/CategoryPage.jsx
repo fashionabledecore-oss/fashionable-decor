@@ -4,8 +4,8 @@ import { useAsync } from '../hooks/useAsync'
 import { siteConfig, inCity } from '../config/site'
 import EmptyRange from '../components/common/EmptyRange'
 import NotFound from '../components/common/NotFound'
-import Loader from '../components/common/Loader'
-import ErrorState from '../components/common/ErrorState'
+import LoadState from '../components/common/LoadState'
+import ImageBox from '../components/common/ImageBox'
 import ProductGrid from '../components/products/ProductGrid'
 import Seo from '../components/common/Seo'
 import PageHeader from '../components/common/PageHeader'
@@ -41,9 +41,13 @@ function CategoryPage() {
     setSearchParams(next)
   }
 
-  if (meta.loading) return <Loader fullPage />
   if (meta.error?.status === 404) return <NotFound message="This category does not exist." />
-  if (meta.error) return <ErrorState fullPage message={meta.error.message} />
+  // (Retry dabane par dono requests dobara, taaki doosra Retry na dabana pade.)
+  const retryAll = () => {
+    meta.retry()
+    if (list.error) list.retry()
+  }
+  if (meta.loading || meta.error) return <LoadState state={{ ...meta, retry: retryAll }} fullPage />
 
   const collection = meta.data
   const category = collection.categories.find((c) => c.slug === categorySlug)
@@ -117,11 +121,25 @@ function CategoryPage() {
           </label>
         </div>
 
-        <div className="mt-8">
-          {list.loading && <Loader />}
-          {list.error && <ErrorState message={list.error.message} />}
+        {/* (min-h: list load hote waqt footer upar aa kar phir neeche na khiske) */}
+        <div className="mt-8 min-h-[60vh]">
+          {(list.loading || list.error) && <LoadState state={list} />}
 
-          {list.data && total === 0 && <EmptyRange name={category.name} />}
+          {list.data && total === 0 && (
+            <>
+              {category.image?.url && (
+                <ImageBox
+                  src={category.image.url}
+                  alt={category.name}
+                  width={560}
+                  ratio={3 / 4}
+                  fit="contain"
+                  className="mx-auto aspect-[4/3] w-full max-w-md rounded-[28px]"
+                />
+              )}
+              <EmptyRange name={category.name} />
+            </>
+          )}
 
           {list.data && total > 0 && products.length === 0 && (
             <div className="py-10 text-center">

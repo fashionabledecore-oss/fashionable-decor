@@ -6,9 +6,9 @@ import Seo from '../components/common/Seo'
 import PageHeader from '../components/common/PageHeader'
 import EmptyRange from '../components/common/EmptyRange'
 import ProductGrid from '../components/products/ProductGrid'
+import CategoryCards from '../components/products/CategoryCards'
 import NotFound from '../components/common/NotFound'
-import Loader from '../components/common/Loader'
-import ErrorState from '../components/common/ErrorState'
+import LoadState from '../components/common/LoadState'
 
 const LIMIT = 12
 
@@ -18,9 +18,13 @@ function CollectionPage() {
   const meta = useAsync(() => getCollection(collectionSlug), `col:${collectionSlug}`)
   const list = useAsync(() => getProducts({ collection: collectionSlug, limit: LIMIT }), `colproducts:${collectionSlug}`)
 
-  if (meta.loading) return <Loader fullPage />
   if (meta.error?.status === 404) return <NotFound message="This page does not exist." />
-  if (meta.error) return <ErrorState fullPage message={meta.error.message} />
+  // (Retry dabane par dono requests dobara, taaki doosra Retry na dabana pade.)
+  const retryAll = () => {
+    meta.retry()
+    if (list.error) list.retry()
+  }
+  if (meta.loading || meta.error) return <LoadState state={{ ...meta, retry: retryAll }} fullPage />
 
   const collection = meta.data
   const line = productLines.find((p) => p.slug === collection.slug)
@@ -28,6 +32,8 @@ function CollectionPage() {
   const products = list.data?.data ?? []
   const total = list.data?.pagination?.total ?? 0
   const categories = collection.categories
+  // (Types ke photo cards: jab ek se zyada type ho, ya kisi type ki photo ho.)
+  const showTypeCards = categories.length > 1 || categories.some((c) => c.image?.url)
 
   return (
     <>
@@ -48,30 +54,27 @@ function CollectionPage() {
           intro={intro}
         />
 
-        {categories.length > 1 && (
+        {showTypeCards && (
           <nav aria-label={`Types of ${collection.name}`} className="mt-8">
-            <ul className="flex flex-wrap gap-2.5">
-              {categories.map((c) => (
-                <li key={c.slug}>
-                  <Link to={`/collections/${collectionSlug}/${c.slug}`} className="chip clay clay-paper clay-press min-h-11 px-4">
-                    {c.name}
-                  </Link>
-                </li>
-              ))}
-            </ul>
+            <CategoryCards collectionSlug={collectionSlug} categories={categories} />
           </nav>
         )}
 
-        <div className="mt-10">
-          {list.loading && <Loader />}
-          {list.error && <ErrorState message={list.error.message} />}
+        {/* (min-h: list load hote waqt footer upar aa kar phir neeche na khiske) */}
+        <div className="mt-10 min-h-[50vh]">
+          {(list.loading || list.error) && <LoadState state={list} />}
           {list.data && total === 0 && <EmptyRange name={collection.name} />}
-          {products.length > 0 && <ProductGrid products={products} columns={4} />}
+          {products.length > 0 && (
+            <>
+              {showTypeCards && <h2 className="mb-6 text-3xl font-semibold">Latest pieces</h2>}
+              <ProductGrid products={products} columns={4} />
+            </>
+          )}
           {total > products.length && categories.length > 1 && (
-            <p className="text-center text-muted">Showing the latest {products.length}. Pick a type above to see more.</p>
+            <p className="mt-8 text-center text-muted">Showing the latest {products.length}. Pick a type above to see more.</p>
           )}
           {total > products.length && categories.length === 1 && (
-            <p className="text-center">
+            <p className="mt-8 text-center">
               <Link to={`/collections/${collectionSlug}/${categories[0].slug}`} className="btn clay clay-paper clay-press">
                 See all {total}
               </Link>

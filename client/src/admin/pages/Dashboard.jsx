@@ -50,6 +50,18 @@ function Dashboard() {
       {o && (
         <>
           <h2 className="mt-10 text-lg font-semibold text-walnut">Your website</h2>
+          {o.activeProducts === 0 && (
+            <div className="mt-4 rounded-xl bg-butter px-4 py-3 text-sm text-ink" role="note">
+              <p className="font-semibold">No products are visible on the website yet.</p>
+              <p className="mt-1">
+                Photos added on Collections and Categories are only cover photos for the tiles. When a visitor taps a
+                tile they see &quot;We are adding photos here&quot; until you add products.
+              </p>
+              <Link to="/admin/products/bulk" className="mt-2 inline-block font-medium text-walnut underline">
+                Add products from photos (Bulk add)
+              </Link>
+            </div>
+          )}
           <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
             {[
               ['Products', `${o.activeProducts} visible`, o.products, '/admin/products'],

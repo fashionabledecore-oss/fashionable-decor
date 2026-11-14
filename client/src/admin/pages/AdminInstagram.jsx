@@ -19,6 +19,7 @@ function AdminInstagram() {
       title="Instagram"
       intro='Reels and posts for "Watch our work" on the home page. The section is hidden until at least one is active. Instagram only loads when a visitor taps a card.'
       addLabel="Add reel or post"
+      itemName={(item) => item.caption || `Instagram ${item.kind}`}
       emptyText="Nothing added yet. Open a reel in the Instagram app, tap Share > Copy link, and paste it here."
       toForm={(item) => ({
         url: item?.url ?? '',

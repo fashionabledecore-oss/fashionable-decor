@@ -1,12 +1,12 @@
 import ProductCard from './ProductCard'
 
-// (CSS columns se masonry: alag height ke cards apne aap fit ho jaate hain.)
+// (Saare cards ka photo box ek jaisa (4:3), isliye seedha grid: rows barabar, order baayen se daayen.)
 function ProductGrid({ products, columns = 3 }) {
-  const cols = columns === 4 ? 'sm:columns-2 lg:columns-4' : 'sm:columns-2 lg:columns-3'
+  const cols = columns === 4 ? 'sm:grid-cols-2 lg:grid-cols-4' : 'sm:grid-cols-2 lg:grid-cols-3'
   return (
-    <div className={`columns-1 gap-7 ${cols}`}>
-      {products.map((p, i) => (
-        <ProductCard key={p._id} product={p} index={i} />
+    <div className={`grid grid-cols-1 gap-x-7 gap-y-10 ${cols}`}>
+      {products.map((p) => (
+        <ProductCard key={p._id} product={p} />
       ))}
     </div>
   )

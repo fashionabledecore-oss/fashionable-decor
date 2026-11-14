@@ -33,6 +33,8 @@ function ProductLineGrid({ lines }) {
 
 function Tile({ line, big = false }) {
   const Doodle = doodles[line.doodle] || doodles.chair
+  // (Photo box 4:3, poori photo dikhti hai. Bada tile desktop par baaki jagah bhar leta hai, phir bhi crop nahi.)
+  const box = big ? 'aspect-[4/3] md:aspect-auto md:min-h-48 md:flex-1' : 'aspect-[4/3]'
   return (
     <Link
       to={`/collections/${line.slug}`}
@@ -48,14 +50,15 @@ function Tile({ line, big = false }) {
         <ImageBox
           src={line.image}
           alt={line.name}
-          width={big ? 600 : 300}
-          ratio={big ? 0.66 : 0.75}
-          className={`mt-auto w-full rounded-[20px] ${big ? 'aspect-[3/2]' : 'aspect-[4/3]'}`}
+          width={big ? 640 : 320}
+          ratio={3 / 4}
+          fit="contain"
+          className={`mt-auto w-full rounded-[20px] ${box}`}
         />
       ) : (
         <span
           aria-hidden="true"
-          className={`ph mt-auto flex w-full items-center justify-center rounded-[20px] ${big ? 'aspect-[3/2]' : 'aspect-[4/3]'}`}
+          className={`ph mt-auto flex w-full items-center justify-center rounded-[20px] ${box}`}
           style={{ '--ph': `var(--color-${line.tone})` }}
         >
           <Doodle size={big ? 80 : 44} strokeWidth={2} />

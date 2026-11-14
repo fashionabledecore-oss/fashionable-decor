@@ -1,16 +1,19 @@
-import { useState } from 'react'
-import { Link, useLocation } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { Eye, EyeOff, ExternalLink, Images, Pencil, Plus, Search, Star, Trash2 } from 'lucide-react'
 import { adminDeleteProduct, adminGetCollections, adminGetProducts, adminUpdateProduct } from '../../services/api'
 import { useAsync } from '../../hooks/useAsync'
 import ImageBox from '../../components/common/ImageBox'
 import Loader from '../../components/common/Loader'
 import ErrorState from '../../components/common/ErrorState'
+import AdminToast from '../components/AdminToast'
+import { useSavedRow } from '../editFeedback'
 
 const selectClass = 'rounded-full border border-beige bg-white px-4 py-2 text-sm text-ink'
 
 function AdminProducts() {
   const location = useLocation()
+  const navigate = useNavigate()
   const [search, setSearch] = useState('')
   const [searchInput, setSearchInput] = useState('')
   const [status, setStatus] = useState('all')
@@ -29,6 +32,12 @@ function AdminProducts() {
   const products = data?.data ?? []
   const pagination = data?.pagination
   const reload = () => setVersion((v) => v + 1)
+  const [savedId] = useSavedRow(Boolean(data) && !loading, location.state?.savedId)
+
+  // (Save ka message ek hi baar: refresh ya Back par dobara na aaye.)
+  useEffect(() => {
+    if (location.state) navigate(location.pathname, { replace: true, state: null })
+  }, [location.state, location.pathname, navigate])
 
   const applySearch = (e) => {
     e.preventDefault()
@@ -143,8 +152,7 @@ function AdminProducts() {
         </select>
       </div>
 
-      {notice && <p className="mt-4 rounded-xl bg-sage/20 px-4 py-3 text-sm text-ink">{notice}</p>}
-      {problem && <p className="mt-4 rounded-xl bg-danger-soft px-4 py-3 text-sm text-danger" role="alert">{problem}</p>}
+      <AdminToast notice={notice} problem={problem} onClose={() => { setNotice(''); setProblem('') }} />
 
       {loading && <Loader />}
       {error && <ErrorState message={error.message} />}
@@ -166,7 +174,7 @@ function AdminProducts() {
             </thead>
             <tbody className="divide-y divide-beige">
               {products.map((p) => (
-                <tr key={p._id} className={p.isActive ? '' : 'bg-ink/5'}>
+                <tr key={p._id} id={`row-${p._id}`} className={`scroll-mt-4 transition-colors ${savedId === String(p._id) ? 'bg-sage/30' : p.isActive ? '' : 'bg-ink/5'}`}>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
                       <ImageBox src={p.images?.[0]?.url} alt={p.name} className="h-12 w-16 rounded-lg" width={160} />

@@ -5,7 +5,10 @@ import { useAsync } from '../../hooks/useAsync'
 import Loader from '../../components/common/Loader'
 import ErrorState from '../../components/common/ErrorState'
 import FormAlert from './FormAlert'
+import EditingBanner from './EditingBanner'
+import AdminToast from './AdminToast'
 import { saveNewOrder } from '../reorder'
+import { rowState, useEditFocus, useSavedRow } from '../editFeedback'
 
 // (Reviews aur Instagram ka ek jaisa admin page: list (phone par cards), add/edit form,
 //  order up/down, show/hide, delete. Har page sirf apne fields aur card ka look deta hai.)
@@ -13,15 +16,18 @@ import { saveNewOrder } from '../reorder'
 // kind: 'reviews' | 'instagram'
 // toForm(item|null) -> form values. toPayload(values) -> { payload } ya { error }.
 // renderFields({ values, set, errors }) -> form fields. renderItem(item) -> card ka andar wala hissa.
-function ContentManager({ kind, title, intro, addLabel, emptyText, note, toForm, toPayload, renderFields, renderItem }) {
+// itemName(item) -> banner aur messages mein dikhne wala naam.
+function ContentManager({ kind, title, intro, addLabel, emptyText, note, toForm, toPayload, renderFields, renderItem, itemName = () => 'item' }) {
   const [version, setVersion] = useState(0)
   const [editing, setEditing] = useState(null) // null | 'new' | item
   const [notice, setNotice] = useState('')
   const [problem, setProblem] = useState('')
 
-  const { data, loading, error } = useAsync(() => adminListContent(kind), `admin-${kind}:${version}`)
+  const { data, loading, error, retry } = useAsync(() => adminListContent(kind), `admin-${kind}:${version}`)
   const items = data ?? []
   const reload = () => setVersion((v) => v + 1)
+  const formRef = useEditFocus(editing === 'new' ? 'new' : editing?._id)
+  const [savedId, markSaved] = useSavedRow(Boolean(data) && !loading)
 
   const run = async (fn, message) => {
     setNotice('')
@@ -37,7 +43,10 @@ function ContentManager({ kind, title, intro, addLabel, emptyText, note, toForm,
 
   // (Order up/down: items ka displayOrder list ki position ke hisaab se set ho jata hai.)
   const move = (index, dir) =>
-    run(() => saveNewOrder(items, index, dir, (id, body) => adminUpdateContent(kind, id, body)))
+    run(
+      () => saveNewOrder(items, index, dir, (id, body) => adminUpdateContent(kind, id, body)),
+      `Order saved. Moved ${dir < 0 ? 'up' : 'down'}.`,
+    )
 
   const remove = (item) => {
     if (!window.confirm('Delete this permanently? This cannot be undone.')) return
@@ -63,34 +72,37 @@ function ContentManager({ kind, title, intro, addLabel, emptyText, note, toForm,
       </div>
 
       {note && <p className="mt-4 rounded-xl bg-butter px-4 py-3 text-sm text-ink">{note}</p>}
-      {notice && <p className="mt-4 rounded-xl bg-sage/20 px-4 py-3 text-sm text-ink">{notice}</p>}
-      {problem && (
-        <p className="mt-4 rounded-xl bg-danger-soft px-4 py-3 text-sm text-danger" role="alert">
-          {problem}
-        </p>
-      )}
+      <AdminToast notice={notice} problem={problem} onClose={() => { setNotice(''); setProblem('') }} />
 
       {editing && (
-        <ContentForm
-          key={editing === 'new' ? 'new' : editing._id}
-          kind={kind}
-          initial={editing === 'new' ? null : editing}
-          nextOrder={items.length}
-          toForm={toForm}
-          toPayload={toPayload}
-          renderFields={renderFields}
-          onCancel={() => setEditing(null)}
-          onSaved={(message) => {
-            setEditing(null)
-            setProblem('')
-            setNotice(message)
-            reload()
-          }}
-        />
+        <div ref={formRef} className="mt-6 scroll-mt-4 space-y-3">
+          <EditingBanner
+            name={editing === 'new' ? addLabel.replace(/^Add\s+/i, 'new ') : itemName(editing)}
+            isNew={editing === 'new'}
+            onCancel={() => setEditing(null)}
+          />
+          <ContentForm
+            key={editing === 'new' ? 'new' : editing._id}
+            kind={kind}
+            initial={editing === 'new' ? null : editing}
+            nextOrder={items.length}
+            toForm={toForm}
+            toPayload={toPayload}
+            renderFields={renderFields}
+            onCancel={() => setEditing(null)}
+            onSaved={(message, id) => {
+              setEditing(null)
+              setProblem('')
+              setNotice(message)
+              markSaved(id)
+              reload()
+            }}
+          />
+        </div>
       )}
 
       {loading && <Loader />}
-      {error && <ErrorState message={error.message} />}
+      {error && <ErrorState message={error.message} onRetry={retry} />}
 
       {data && items.length === 0 && !editing && (
         <p className="mt-6 rounded-2xl bg-white p-8 text-center text-sm text-ink/60">{emptyText}</p>
@@ -99,7 +111,14 @@ function ContentManager({ kind, title, intro, addLabel, emptyText, note, toForm,
       {items.length > 0 && (
         <ul className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {items.map((item, i) => (
-            <li key={item._id} className={`flex flex-col rounded-2xl bg-white p-3 shadow-sm ${item.isActive ? '' : 'opacity-60'}`}>
+            <li
+              key={item._id}
+              id={`row-${item._id}`}
+              className={`flex scroll-mt-4 flex-col rounded-2xl bg-white p-3 shadow-sm transition ${item.isActive ? '' : 'opacity-60'} ${rowState(item._id, editing, savedId)}`}
+            >
+              {editing?._id === item._id && (
+                <span className="mb-2 self-start rounded-full bg-terracotta px-2 py-0.5 text-xs text-white">Editing</span>
+              )}
               <div className="flex-1">{renderItem(item)}</div>
               <div className="mt-3 flex items-center gap-1 border-t border-beige pt-3">
                 <button type="button" onClick={() => move(i, -1)} disabled={i === 0} aria-label="Move up" className="rounded-full bg-beige p-2 text-walnut disabled:opacity-30">
@@ -115,10 +134,10 @@ function ContentManager({ kind, title, intro, addLabel, emptyText, note, toForm,
                 >
                   {item.isActive ? <><EyeOff size={14} /> Hide</> : <><Eye size={14} /> Show</>}
                 </button>
-                <button type="button" onClick={() => setEditing(item)} aria-label="Edit" className="ml-auto p-2 text-walnut">
+                <button type="button" onClick={() => setEditing(item)} aria-label={`Edit ${itemName(item)}`} className="ml-auto p-2 text-walnut">
                   <Pencil size={17} />
                 </button>
-                <button type="button" onClick={() => remove(item)} aria-label="Delete" className="p-2 text-ink/40 hover:text-danger">
+                <button type="button" onClick={() => remove(item)} aria-label={`Delete ${itemName(item)}`} className="p-2 text-ink/40 hover:text-danger">
                   <Trash2 size={17} />
                 </button>
               </div>
@@ -132,7 +151,8 @@ function ContentManager({ kind, title, intro, addLabel, emptyText, note, toForm,
 
 function ContentForm({ kind, initial, nextOrder, toForm, toPayload, renderFields, onCancel, onSaved }) {
   const editing = Boolean(initial?._id)
-  const [values, setValues] = useState(() => ({ isActive: true, ...toForm(initial) }))
+  // (Edit par item ki asli visibility: pehle hidden item save karte hi chupchaap visible ho jata tha.)
+  const [values, setValues] = useState(() => ({ ...toForm(initial), isActive: initial?.isActive ?? true }))
   const [errors, setErrors] = useState({})
   const [alert, setAlert] = useState('')
   const [serverErrors, setServerErrors] = useState(null)
@@ -158,9 +178,8 @@ function ContentForm({ kind, initial, nextOrder, toForm, toPayload, renderFields
     setAlert('')
     setServerErrors(null)
     try {
-      if (editing) await adminUpdateContent(kind, initial._id, body)
-      else await adminCreateContent(kind, body)
-      onSaved(editing ? 'Saved.' : 'Added.')
+      const saved = editing ? await adminUpdateContent(kind, initial._id, body) : await adminCreateContent(kind, body)
+      onSaved(editing ? 'Saved.' : 'Added.', saved?._id ?? initial?._id)
     } catch (err) {
       setAlert(err.message)
       setServerErrors(err.errors || null)
@@ -170,7 +189,7 @@ function ContentForm({ kind, initial, nextOrder, toForm, toPayload, renderFields
   }
 
   return (
-    <form onSubmit={submit} noValidate className="mt-6 space-y-4 rounded-2xl bg-white p-4 shadow-sm sm:p-6">
+    <form onSubmit={submit} noValidate className="space-y-4 rounded-2xl bg-white p-4 shadow-sm sm:p-6">
       {renderFields({ values, set, errors })}
 
       <label className="flex items-center gap-2 text-sm text-ink">
