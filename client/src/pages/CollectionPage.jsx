@@ -67,7 +67,7 @@ function CollectionPage() {
           {products.length > 0 && (
             <>
               {showTypeCards && <h2 className="mb-6 text-3xl font-semibold">Latest pieces</h2>}
-              <ProductGrid products={products} columns={4} />
+              <ProductGrid products={products} compact />
             </>
           )}
           {total > products.length && categories.length > 1 && (

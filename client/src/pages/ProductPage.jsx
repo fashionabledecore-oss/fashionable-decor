@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react'
-import { useParams } from 'react-router-dom'
-import { ChevronDown, MessageCircle, Phone, Ruler } from 'lucide-react'
+import { useEffect } from 'react'
+import { Link, useParams } from 'react-router-dom'
+import { ChevronDown, ChevronLeft, ChevronRight, MessageCircle, Phone, Ruler } from 'lucide-react'
 import { getProduct } from '../services/api'
 import { useAsync } from '../hooks/useAsync'
 import { siteConfig, inCity, getWhatsAppLink, phoneLink, SITE_URL, productLines } from '../config/site'
@@ -9,8 +9,7 @@ import { cloudinaryUrl } from '../utils/cloudinary'
 import { productPath } from '../utils/paths'
 import { trackEvent } from '../utils/tracking'
 import Breadcrumbs from '../components/common/Breadcrumbs'
-import ImageBox from '../components/common/ImageBox'
-import PhotoFrame from '../components/common/PhotoFrame'
+import ProductGallery from '../components/products/ProductGallery'
 import Seo from '../components/common/Seo'
 import NotFound from '../components/common/NotFound'
 import LoadState from '../components/common/LoadState'
@@ -21,12 +20,29 @@ import { interestForProduct } from '../utils/interests'
 
 const TAG_TONES = ['clay-sky', 'clay-butter', 'clay-sage', 'clay-mustard']
 
-function ProductDetail({ product }) {
-  const [activeIndex, setActiveIndex] = useState(0)
+// (Same category ke agle/pichhle product ka link.)
+function NeighbourLink({ item, dir, collection, category }) {
+  if (!item) return <span />
+  const Icon = dir === 'prev' ? ChevronLeft : ChevronRight
+  return (
+    <Link
+      to={`/collections/${collection.slug}/${category.slug}/${item.slug}`}
+      rel={dir}
+      className={`group flex min-w-0 items-center gap-2 text-sm font-semibold ${dir === 'next' ? 'justify-end text-right' : ''}`}
+    >
+      {dir === 'prev' && <Icon size={18} className="shrink-0" />}
+      <span className="min-w-0">
+        <span className="block text-xs font-medium text-muted">{dir === 'prev' ? 'Previous' : 'Next'}</span>
+        <span className="block truncate underline-offset-4 group-hover:underline">{item.name}</span>
+      </span>
+      {dir === 'next' && <Icon size={18} className="shrink-0" />}
+    </Link>
+  )
+}
 
+function ProductDetail({ product }) {
   const { collection, category } = product
   const images = product.images ?? []
-  const activeImage = images[activeIndex]
   const related = product.related ?? []
 
   const dims = product.dimensions ?? {}
@@ -92,44 +108,21 @@ function ProductDetail({ product }) {
           ]}
         />
 
+        {(product.prev || product.next) && (
+          <nav aria-label={`More ${category.name}`} className="mt-5 grid grid-cols-2 gap-4 border-y border-line py-3">
+            <NeighbourLink item={product.prev} dir="prev" collection={collection} category={category} />
+            <NeighbourLink item={product.next} dir="next" collection={collection} category={category} />
+          </nav>
+        )}
+
         <div className="mt-8 grid gap-x-12 gap-y-10 md:grid-cols-12">
           {/* Gallery */}
           <div className="md:col-span-7 md:col-start-1 md:row-start-1">
-            <PhotoFrame
-              tone="coral"
-              src={activeImage?.url}
-              alt={activeImage?.alt || `${product.name} - ${category.name} by ${siteConfig.name}`}
-              width={720}
-              ratio={3 / 4}
-              aspect={3 / 4}
-              fit="contain"
-              priority
-              className="w-full"
+            <ProductGallery
+              images={images}
+              name={product.name}
+              fallbackAlt={`${product.name} - ${category.name} by ${siteConfig.name}`}
             />
-            {images.length > 1 && (
-              <ul className="mt-6 flex flex-wrap gap-3" aria-label="More photos">
-                {images.map((img, i) => (
-                  <li key={img.url}>
-                    <button
-                      type="button"
-                      onClick={() => setActiveIndex(i)}
-                      aria-label={`Show photo ${i + 1}`}
-                      aria-pressed={i === activeIndex}
-                      className={`clay block rounded-[18px] p-1.5 ${i === activeIndex ? 'clay-mustard clay-pressed' : 'clay-paper clay-press'}`}
-                    >
-                      <ImageBox
-                        src={img.url}
-                        alt={img.alt || `${product.name} - photo ${i + 1}`}
-                        className="h-15 w-20 rounded-[12px]"
-                        width={80}
-                        ratio={3 / 4}
-                        fit="contain"
-                      />
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
           </div>
 
           {/* Sticky enquiry card */}

@@ -62,7 +62,7 @@ export const productSchema = z.object({
   categoryId: objectId,
   shortDescription: z.string().trim().max(200).optional(),
   description: z.string().trim().max(5000).optional(),
-  images: z.array(productImage).max(10, 'You can add at most 10 images.').optional(),
+  images: z.array(productImage).max(15, 'You can add at most 15 images.').optional(),
   dimensions: z
     .object({
       width: dimension,

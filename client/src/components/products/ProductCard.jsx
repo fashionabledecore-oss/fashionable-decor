@@ -5,12 +5,31 @@ import { productPath, mainImage } from '../../utils/paths'
 import ImageBox from '../common/ImageBox'
 
 // (Har card ka photo box 4:3 hai. Photo kisi bhi size/shape ki ho, poori dikhti hai (object-contain), crop nahi.)
-function ProductCard({ product }) {
+// compact: sirf photo + chhota naam (category grid, recent work), taaki bahut saara kaam ek saath dikhe.
+function ProductCard({ product, compact = false }) {
   const path = productPath(product)
   const image = mainImage(product)
-  const message = `Hello, I want to enquire about ${product.name}. ${window.location.origin}${path}`
   const alt = image?.alt || [product.name, product.category?.name].filter(Boolean).join(' - ')
 
+  if (compact) {
+    return (
+      <article className="group">
+        <Link to={path} className="block rounded-[20px]">
+          <ImageBox
+            src={image?.url}
+            alt={alt}
+            width={360}
+            ratio={3 / 4}
+            fit="contain"
+            className="aspect-[4/3] w-full rounded-[20px] transition-transform duration-500 motion-safe:group-hover:scale-[1.02]"
+          />
+          <h3 className="mt-2 line-clamp-2 px-1 text-sm font-semibold underline-offset-4 group-hover:underline">{product.name}</h3>
+        </Link>
+      </article>
+    )
+  }
+
+  const message = `Hello, I want to enquire about ${product.name}. ${window.location.origin}${path}`
   return (
     <article className="group flex flex-col">
       <Link to={path} className="block overflow-hidden rounded-[28px]">

@@ -3,6 +3,7 @@ import Seo from '../components/common/Seo'
 import Hero from '../components/home/Hero'
 import ProductsSection from '../components/home/ProductsSection'
 import HowItWorks from '../components/home/HowItWorks'
+import RecentWork from '../components/home/RecentWork'
 import InstagramSection from '../components/home/InstagramSection'
 import Testimonials from '../components/home/Testimonials'
 import ClosingEnquiry from '../components/home/ClosingEnquiry'
@@ -14,6 +15,7 @@ function Home() {
       <Seo title={siteConfig.defaultTitle} description={siteConfig.defaultDescription} path="/" />
       <Hero />
       <ProductsSection />
+      <RecentWork />
       <HowItWorks />
       <InstagramSection />
       <Testimonials />

@@ -31,7 +31,7 @@ import {
 import { uploadImages, removeImage } from '../controllers/uploadController.js'
 import { reviewAdmin, instagramAdmin, getOverview } from '../controllers/contentController.js'
 import { requireAdmin } from '../middleware/requireAdmin.js'
-import { loginLimiter } from '../middleware/rateLimiter.js'
+import { adminLimiter, loginLimiter } from '../middleware/rateLimiter.js'
 import { upload } from '../middleware/upload.js'
 
 const router = Router()
@@ -40,7 +40,8 @@ const router = Router()
 router.post('/login', loginLimiter, login)
 router.post('/logout', logout)
 
-// ---- Yahan se neeche sab kuch sirf logged-in admin ke liye ----
+// ---- Yahan se neeche sab kuch sirf logged-in admin ke liye (apna bada rate limit) ----
+router.use(adminLimiter)
 router.use(requireAdmin)
 
 router.get('/me', me)

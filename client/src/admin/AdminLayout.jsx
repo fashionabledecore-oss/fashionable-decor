@@ -1,4 +1,5 @@
-import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom'
+import { useEffect, useRef } from 'react'
+import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { ExternalLink, Film, Inbox, Layers, LayoutDashboard, LogOut, MessageSquareQuote, Package, Tags } from 'lucide-react'
 import { siteConfig } from '../config/site'
 import Seo from '../components/common/Seo'
@@ -17,6 +18,14 @@ const links = [
 function AdminLayout() {
   const { admin, logout } = useAuth()
   const navigate = useNavigate()
+  const { pathname } = useLocation()
+  const mainRef = useRef(null)
+
+  // (Har admin page ke badlav par upar se shuru, aur keyboard focus naye page par.)
+  useEffect(() => {
+    window.scrollTo(0, 0)
+    mainRef.current?.focus({ preventScroll: true })
+  }, [pathname])
 
   const handleLogout = async () => {
     await logout()
@@ -69,7 +78,7 @@ function AdminLayout() {
         </div>
       </aside>
 
-      <main className="min-w-0 flex-1 p-4 sm:p-5 md:p-8">
+      <main ref={mainRef} tabIndex={-1} className="min-w-0 flex-1 p-4 outline-none sm:p-5 md:p-8">
         <Outlet />
       </main>
     </div>

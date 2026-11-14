@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { Pencil, Plus, Trash2 } from 'lucide-react'
 import {
   adminCreateCollection,
@@ -17,7 +18,7 @@ import OrderButtons from '../components/OrderButtons'
 import EditingBanner from '../components/EditingBanner'
 import AdminToast from '../components/AdminToast'
 import { saveNewOrder } from '../reorder'
-import { rowState, useEditFocus, useSavedRow } from '../editFeedback'
+import { rowState, useInlineEditor, useSavedRow } from '../editFeedback'
 
 function CollectionForm({ initial, onSaved, onCancel }) {
   const editing = Boolean(initial?._id)
@@ -110,7 +111,10 @@ function CollectionForm({ initial, onSaved, onCancel }) {
       <div>
         <p className="text-sm font-medium text-ink">Tile cover photo</p>
         <p className="mb-2 text-xs text-ink/50">
-          Shown on the home page tile. It is not a product: to show products, add them on the Products page.
+          Shown on the home page tile. It is only the cover photo, not a product.{' '}
+          <Link to="/admin/products/bulk" className="font-medium text-walnut underline">
+            Add products with photos
+          </Link>
         </p>
         <ImageUploader
           images={values.banner ? [values.banner] : []}
@@ -145,17 +149,16 @@ function CollectionForm({ initial, onSaved, onCancel }) {
 
 function AdminCollections() {
   const [version, setVersion] = useState(0)
-  const [editing, setEditing] = useState(null) // null | 'new' | collection
+  const { editing, formKey, open, close, formProps } = useInlineEditor()
   const [notice, setNotice] = useState('')
   const [problem, setProblem] = useState('')
 
   const { data, loading, error } = useAsync(adminGetCollections, `admin-collections:${version}`)
   const reload = () => setVersion((v) => v + 1)
-  const formRef = useEditFocus(editing === 'new' ? 'new' : editing?._id)
   const [savedId, markSaved] = useSavedRow(Boolean(data) && !loading)
 
   const saved = (message, id) => {
-    setEditing(null)
+    close()
     setProblem('')
     setNotice(message)
     markSaved(id)
@@ -206,27 +209,25 @@ function AdminCollections() {
           <h1 className="text-2xl font-bold text-walnut">Collections</h1>
           <p className="mt-1 text-sm text-ink/60">Your product lines: Sofas, Recliners, Beds, Headboards, Dining, Curtains, Wallpaper. Each one gets a tile on the website.</p>
         </div>
-        {!editing && (
-          <button
-            type="button"
-            onClick={() => setEditing('new')}
-            className="inline-flex items-center gap-2 rounded-full bg-walnut px-5 py-2 text-sm font-medium text-white"
-          >
-            <Plus size={16} /> Add collection
-          </button>
-        )}
+        <button
+          type="button"
+          onClick={() => open('new')}
+          className="inline-flex items-center gap-2 rounded-full bg-walnut px-5 py-2 text-sm font-medium text-white"
+        >
+          <Plus size={16} /> Add collection
+        </button>
       </div>
 
       <AdminToast notice={notice} problem={problem} onClose={() => { setNotice(''); setProblem('') }} />
 
       {editing && (
-        <div ref={formRef} className="mt-6 scroll-mt-4 space-y-3">
-          <EditingBanner name={editing === 'new' ? 'new collection' : editing.name} isNew={editing === 'new'} onCancel={() => setEditing(null)} />
+        <div {...formProps} className="mt-6 scroll-mt-4 space-y-3" data-testid="inline-form">
+          <EditingBanner name={editing === 'new' ? 'new collection' : editing.name} isNew={editing === 'new'} onCancel={close} />
           <CollectionForm
-            key={editing === 'new' ? 'new' : editing._id}
+            key={formKey}
             initial={editing === 'new' ? null : editing}
             onSaved={saved}
-            onCancel={() => setEditing(null)}
+            onCancel={close}
           />
         </div>
       )}
@@ -268,7 +269,7 @@ function AdminCollections() {
                 >
                   {c.isActive ? 'Active (tap to hide)' : 'Hidden (tap to show)'}
                 </button>
-                <button type="button" onClick={() => setEditing(c)} aria-label={`Edit ${c.name}`} className="ml-auto p-2 text-walnut">
+                <button type="button" onClick={() => open(c)} aria-label={`Edit ${c.name}`} className="ml-auto p-2 text-walnut">
                   <Pencil size={17} />
                 </button>
                 <button type="button" onClick={() => remove(c)} aria-label={`Delete ${c.name}`} className="p-2 text-ink/40 hover:text-danger">

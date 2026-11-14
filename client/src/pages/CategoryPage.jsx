@@ -1,4 +1,6 @@
+import { useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
+import { Loader2 } from 'lucide-react'
 import { getCollection, getProducts } from '../services/api'
 import { useAsync } from '../hooks/useAsync'
 import { siteConfig, inCity } from '../config/site'
@@ -10,7 +12,7 @@ import ProductGrid from '../components/products/ProductGrid'
 import Seo from '../components/common/Seo'
 import PageHeader from '../components/common/PageHeader'
 
-const PAGE_SIZE = 12
+const PAGE_SIZE = 24
 
 const sortOptions = [
   { value: 'newest', label: 'Newest first' },
@@ -24,46 +26,30 @@ function CategoryPage() {
 
   const rawSort = searchParams.get('sort')
   const sort = sortOptions.some((o) => o.value === rawSort) ? rawSort : 'newest'
-  const page = Math.max(1, Number(searchParams.get('page')) || 1)
 
   const meta = useAsync(() => getCollection(collectionSlug), `col:${collectionSlug}`)
-  const list = useAsync(
-    () => getProducts({ collection: collectionSlug, category: categorySlug, sort, page, limit: PAGE_SIZE }),
-    `products:${collectionSlug}:${categorySlug}:${sort}:${page}`,
-  )
-
-  const updateParams = (changes) => {
-    const next = new URLSearchParams(searchParams)
-    Object.entries(changes).forEach(([key, value]) => {
-      if (value) next.set(key, value)
-      else next.delete(key)
-    })
-    setSearchParams(next)
-  }
 
   if (meta.error?.status === 404) return <NotFound message="This category does not exist." />
-  // (Retry dabane par dono requests dobara, taaki doosra Retry na dabana pade.)
-  const retryAll = () => {
-    meta.retry()
-    if (list.error) list.retry()
-  }
-  if (meta.loading || meta.error) return <LoadState state={{ ...meta, retry: retryAll }} fullPage />
+  if (meta.loading || meta.error) return <LoadState state={meta} fullPage />
 
   const collection = meta.data
   const category = collection.categories.find((c) => c.slug === categorySlug)
   if (!category) return <NotFound message="This category does not exist." />
 
-  const products = list.data?.data ?? []
-  const pagination = list.data?.pagination
-  const total = pagination?.total ?? 0
-  const totalPages = pagination?.totalPages ?? 1
+  const changeSort = (value) => {
+    const next = new URLSearchParams(searchParams)
+    if (value === 'newest') next.delete('sort')
+    else next.set('sort', value)
+    next.delete('page')
+    setSearchParams(next)
+  }
 
   return (
     <>
       <Seo
-        title={`${category.name}${inCity}${page > 1 ? ` - Page ${page}` : ''} | ${siteConfig.name}`}
+        title={`${category.name}${inCity} | ${siteConfig.name}`}
         description={`${category.description || `${category.name} from our ${collection.name} range.`} Enquire with ${siteConfig.name} on WhatsApp or ask for a call back.`}
-        path={`/collections/${collectionSlug}/${categorySlug}${page > 1 ? `?page=${page}` : ''}`}
+        path={`/collections/${collectionSlug}/${categorySlug}`}
         image={category.image?.url || collection.bannerImage?.url}
       />
       <div className="mx-auto max-w-6xl px-4 pb-24 sm:px-6">
@@ -101,75 +87,95 @@ function CategoryPage() {
           </ul>
         </nav>
 
-        <div className="mt-8 flex flex-wrap items-center justify-between gap-3">
-          <p className="text-sm font-semibold text-muted" aria-live="polite">
-            {list.data ? `${total} ${total === 1 ? 'piece' : 'pieces'}` : ' '}
-          </p>
-          <label className="flex items-center gap-2 text-sm font-semibold text-muted">
-            Sort by
-            <select
-              value={sort}
-              onChange={(e) => updateParams({ sort: e.target.value === 'newest' ? '' : e.target.value, page: '' })}
-              className="clay-well w-auto py-2 pr-8 text-ink"
-            >
-              {sortOptions.map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
+        {/* (key: sort ya category badle toh list shuru se) */}
+        <ProductList
+          key={`${collectionSlug}:${categorySlug}:${sort}`}
+          collectionSlug={collectionSlug}
+          category={category}
+          sort={sort}
+          onSort={changeSort}
+        />
+      </div>
+    </>
+  )
+}
 
-        {/* (min-h: list load hote waqt footer upar aa kar phir neeche na khiske) */}
-        <div className="mt-8 min-h-[60vh]">
-          {(list.loading || list.error) && <LoadState state={list} />}
+// (Pehle 24 products; "Load more" agle 24 neeche jodta hai.)
+function ProductList({ collectionSlug, category, sort, onSort }) {
+  const first = useAsync(
+    () => getProducts({ collection: collectionSlug, category: category.slug, sort, page: 1, limit: PAGE_SIZE }),
+    `products:${collectionSlug}:${category.slug}:${sort}`,
+  )
+  const [more, setMore] = useState({ items: [], page: 1, loading: false, error: '' })
 
-          {list.data && total === 0 && (
-            <>
-              {category.image?.url && (
-                <ImageBox
-                  src={category.image.url}
-                  alt={category.name}
-                  width={560}
-                  ratio={3 / 4}
-                  fit="contain"
-                  className="mx-auto aspect-[4/3] w-full max-w-md rounded-[28px]"
-                />
-              )}
-              <EmptyRange name={category.name} />
-            </>
-          )}
+  const total = first.data?.pagination?.total ?? 0
+  const products = [...(first.data?.data ?? []), ...more.items]
+  const remaining = total - products.length
 
-          {list.data && total > 0 && products.length === 0 && (
-            <div className="py-10 text-center">
-              <p className="text-muted">There is nothing on this page.</p>
-              <button type="button" onClick={() => updateParams({ page: '' })} className="btn clay clay-coral clay-press mt-4">
-                Go to the first page
-              </button>
-            </div>
-          )}
+  const loadMore = async () => {
+    if (more.loading) return
+    const page = more.page + 1
+    setMore((m) => ({ ...m, loading: true, error: '' }))
+    try {
+      const res = await getProducts({ collection: collectionSlug, category: category.slug, sort, page, limit: PAGE_SIZE })
+      setMore((m) => ({ items: [...m.items, ...res.data], page, loading: false, error: '' }))
+    } catch (err) {
+      setMore((m) => ({ ...m, loading: false, error: err.message || 'Could not load more.' }))
+    }
+  }
 
-          {products.length > 0 && <ProductGrid products={products} />}
-        </div>
-
-        {totalPages > 1 && (
-          <nav aria-label="Pagination" className="mt-6 flex flex-wrap justify-center gap-2.5">
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map((n) => (
-              <button
-                key={n}
-                type="button"
-                onClick={() => updateParams({ page: n === 1 ? '' : String(n) })}
-                aria-current={n === page ? 'page' : undefined}
-                aria-label={`Page ${n}`}
-                className={`clay inline-flex h-11 w-11 items-center justify-center rounded-full font-semibold ${
-                  n === page ? 'clay-coral clay-pressed' : 'clay-paper clay-press'
-                }`}
-              >
-                {n}
-              </button>
+  return (
+    <>
+      <div className="mt-8 flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm font-semibold text-muted" aria-live="polite">
+          {first.data ? `${total} ${total === 1 ? 'piece' : 'pieces'}` : ' '}
+        </p>
+        <label className="flex items-center gap-2 text-sm font-semibold text-muted">
+          Sort by
+          <select value={sort} onChange={(e) => onSort(e.target.value)} className="clay-well w-auto py-2 pr-8 text-ink">
+            {sortOptions.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
             ))}
-          </nav>
+          </select>
+        </label>
+      </div>
+
+      {/* (min-h: list load hote waqt footer upar aa kar phir neeche na khiske) */}
+      <div className="mt-8 min-h-[60vh]">
+        {(first.loading || first.error) && <LoadState state={first} />}
+
+        {first.data && total === 0 && (
+          <>
+            {category.image?.url && (
+              <ImageBox
+                src={category.image.url}
+                alt={category.name}
+                width={560}
+                ratio={3 / 4}
+                fit="contain"
+                className="mx-auto aspect-[4/3] w-full max-w-md rounded-[28px]"
+              />
+            )}
+            <EmptyRange name={category.name} />
+          </>
+        )}
+
+        {products.length > 0 && <ProductGrid products={products} compact />}
+
+        {first.data && remaining > 0 && (
+          <div className="mt-10 text-center">
+            <button type="button" onClick={loadMore} disabled={more.loading} className="btn clay clay-coral clay-press">
+              {more.loading && <Loader2 size={18} className="animate-spin" />}
+              {more.loading ? 'Loading...' : `Load more (${remaining} more)`}
+            </button>
+            {more.error && (
+              <p className="mt-3 text-sm text-danger" role="alert">
+                {more.error} Please tap Load more again.
+              </p>
+            )}
+          </div>
         )}
       </div>
     </>

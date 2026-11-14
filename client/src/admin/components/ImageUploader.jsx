@@ -1,54 +1,11 @@
 import { useRef, useState } from 'react'
 import { ArrowLeft, ArrowRight, ImagePlus, Loader2, Star, Trash2 } from 'lucide-react'
 import { adminDeleteImage, adminUploadImages } from '../../services/api'
-
-const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp']
-const MAX_PICK_MB = 20 // (tu itni badi file chun sakta hai)
-const KEEP_ORIGINAL_BYTES = 1.5 * 1024 * 1024 // (isse chhoti file bina chhede jati hai)
-const TARGET_BYTES = 3 * 1024 * 1024 // (badi file chhoti karke isse neeche laate hain)
-
-const toBlob = (canvas, type, quality) => new Promise((resolve) => canvas.toBlob(resolve, type, quality))
-
-// (Badi photo ko website ke liye kaafi badi (2400 px) par chhota karta hai. Chhoti photo seedha wapas.)
-async function prepareFile(file) {
-  if (file.size <= KEEP_ORIGINAL_BYTES) return file
-
-  let bitmap
-  try {
-    bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' })
-  } catch {
-    throw new Error(`"${file.name}" could not be read. Please try a different photo.`)
-  }
-
-  // (JPEG ko JPEG hi rakhte hain. PNG/WebP mein transparency ho sakti hai, unke liye WebP.)
-  const isJpeg = file.type === 'image/jpeg'
-  const type = isJpeg ? 'image/jpeg' : 'image/webp'
-  const ext = isJpeg ? 'jpg' : 'webp'
-  const base = file.name.replace(/\.[^.]+$/, '')
-
-  try {
-    for (const maxSide of [2400, 1800]) {
-      const scale = Math.min(1, maxSide / Math.max(bitmap.width, bitmap.height))
-      const canvas = document.createElement('canvas')
-      canvas.width = Math.round(bitmap.width * scale)
-      canvas.height = Math.round(bitmap.height * scale)
-      canvas.getContext('2d').drawImage(bitmap, 0, 0, canvas.width, canvas.height)
-
-      for (const quality of [0.88, 0.8, 0.7]) {
-        const blob = await toBlob(canvas, type, quality)
-        if (blob && blob.type === type && blob.size <= TARGET_BYTES) {
-          return new File([blob], `${base}.${ext}`, { type })
-        }
-      }
-    }
-  } finally {
-    bitmap.close?.()
-  }
-  throw new Error(`"${file.name}" is too large even after resizing. Please use a smaller photo.`)
-}
+import { MAX_PICK_MB, checkFile, resizeImage } from '../resizeImage'
 
 // images: [{ url, publicId, alt }]   onChange(newImagesArray)
-function ImageUploader({ images, onChange, max = 10, showAlt = true }) {
+// (Ek baar mein `max` tak photos chun sakte ho; har photo browser mein chhoti (1600 px, 0.8) hoti hai, phir ek ek karke upload.)
+function ImageUploader({ images, onChange, max = 15, showAlt = true }) {
   const inputRef = useRef(null)
   const [status, setStatus] = useState('') // (khaali = kuch nahi ho raha, warna button par dikhne wala text)
   const [error, setError] = useState('')
@@ -70,30 +27,24 @@ function ImageUploader({ images, onChange, max = 10, showAlt = true }) {
     setError('')
 
     if (max === 1 && files.length > 1) return setError('Please choose only one image.')
-    if (files.length > 8) return setError('You can upload at most 8 images at a time.')
     if (max > 1 && images.length + files.length > max) {
-      return setError(`You can add at most ${max} images.`)
+      const room = max - images.length
+      return setError(`You can add at most ${max} images. There is room for ${room} more.`)
     }
-    const wrongType = files.find((f) => !ALLOWED_TYPES.includes(f.type))
-    if (wrongType) return setError(`"${wrongType.name}" is not allowed. Use JPG, PNG or WebP.`)
-    const tooBig = files.find((f) => f.size > MAX_PICK_MB * 1024 * 1024)
-    if (tooBig) return setError(`"${tooBig.name}" is larger than ${MAX_PICK_MB} MB.`)
+    const bad = files.map(checkFile).find(Boolean)
+    if (bad) return setError(`${bad}.`)
 
     try {
-      // (Pehle sab chhoti karo, ek ek karke taaki browser ki memory na bhare.)
-      const prepared = []
-      for (let i = 0; i < files.length; i++) {
-        setStatus(files.length > 1 ? `Preparing ${i + 1} of ${files.length}...` : 'Preparing photo...')
-        prepared.push(await prepareFile(files[i]))
-      }
-
-      // (Phir ek ek karke upload karo. Ek saath bhejne se slow internet par timeout aata hai.)
+      // (Har photo: pehle chhoti, phir upload. Ek ek karke, taaki memory na bhare aur slow net par timeout na aaye.)
       const added = []
       let failure = ''
-      for (let i = 0; i < prepared.length; i++) {
-        setStatus(prepared.length > 1 ? `Uploading ${i + 1} of ${prepared.length}...` : 'Uploading...')
+      for (let i = 0; i < files.length; i++) {
+        const label = files.length > 1 ? ` ${i + 1} of ${files.length}` : ''
         try {
-          const [u] = await adminUploadImages([prepared[i]])
+          setStatus(`Preparing${label}...`)
+          const prepared = await resizeImage(files[i])
+          setStatus(`Uploading${label}...`)
+          const [u] = await adminUploadImages([prepared])
           added.push({ url: u.url, publicId: u.publicId, alt: '' })
         } catch (err) {
           failure = `"${files[i].name}" could not be uploaded: ${err.message}`
@@ -132,6 +83,12 @@ function ImageUploader({ images, onChange, max = 10, showAlt = true }) {
     onChange(next)
   }
 
+  const makeMain = (index) => {
+    const next = [...images]
+    const [img] = next.splice(index, 1)
+    onChange([img, ...next])
+  }
+
   const setAlt = (index, alt) => {
     onChange(images.map((img, i) => (i === index ? { ...img, alt } : img)))
   }
@@ -145,11 +102,26 @@ function ImageUploader({ images, onChange, max = 10, showAlt = true }) {
           {images.map((img, i) => (
             <li key={img.publicId || img.url} className="rounded-2xl border border-beige bg-white p-2">
               <div className="relative">
-                <img src={img.url} alt={img.alt || 'Preview'} className="aspect-[4/3] w-full rounded-xl object-cover" />
+                <img
+                  src={img.url}
+                  alt={img.alt || `Photo ${i + 1}`}
+                  className="photo-well aspect-[4/3] w-full rounded-xl object-contain"
+                  data-testid="uploaded-photo"
+                />
                 {i === 0 && max > 1 && (
                   <span className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-full bg-walnut px-2 py-0.5 text-xs text-white">
                     <Star size={12} /> Main
                   </span>
+                )}
+                {i > 0 && max > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => makeMain(i)}
+                    aria-label={`Set photo ${i + 1} as main`}
+                    className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-full bg-white/90 px-2 py-0.5 text-xs text-walnut shadow-sm"
+                  >
+                    <Star size={12} /> Set as main
+                  </button>
                 )}
               </div>
 
@@ -171,7 +143,7 @@ function ImageUploader({ images, onChange, max = 10, showAlt = true }) {
                       type="button"
                       onClick={() => move(i, i - 1)}
                       disabled={i === 0}
-                      aria-label="Move image left"
+                      aria-label={`Move photo ${i + 1} left`}
                       className="rounded-full bg-beige p-1.5 text-walnut disabled:opacity-30"
                     >
                       <ArrowLeft size={14} />
@@ -180,7 +152,7 @@ function ImageUploader({ images, onChange, max = 10, showAlt = true }) {
                       type="button"
                       onClick={() => move(i, i + 1)}
                       disabled={i === images.length - 1}
-                      aria-label="Move image right"
+                      aria-label={`Move photo ${i + 1} right`}
                       className="rounded-full bg-beige p-1.5 text-walnut disabled:opacity-30"
                     >
                       <ArrowRight size={14} />
@@ -192,6 +164,7 @@ function ImageUploader({ images, onChange, max = 10, showAlt = true }) {
                 <button
                   type="button"
                   onClick={() => removeAt(i)}
+                  aria-label={`Remove photo ${i + 1}`}
                   className="inline-flex items-center gap-1 text-xs text-ink/50 hover:text-danger"
                 >
                   <Trash2 size={14} /> Remove
@@ -232,7 +205,8 @@ function ImageUploader({ images, onChange, max = 10, showAlt = true }) {
       )}
 
       <p className="mt-2 text-xs text-ink/50">
-        JPG, PNG or WebP, up to {MAX_PICK_MB} MB each. Large photos are resized automatically, so the quality stays sharp on the website.
+        JPG, PNG or WebP, up to {MAX_PICK_MB} MB each{max > 1 ? `, up to ${max} photos` : ''}. You can select many at once.
+        Photos are made smaller before upload (1600 px), so they load fast and stay sharp.
       </p>
       {error && (
         <p className="mt-2 text-sm text-danger" role="alert">

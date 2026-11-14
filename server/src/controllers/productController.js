@@ -15,10 +15,30 @@ const listQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(50).default(12),
 })
 
+// (_id se tie-break: bulk add mein ek hi time ke products ho sakte hain; "Load more" mein koi dohraaye/chhoote nahi.)
 const sortMap = {
-  newest: { createdAt: -1 },
-  'name-asc': { name: 1 },
-  'name-desc': { name: -1 },
+  newest: { createdAt: -1, _id: -1 },
+  'name-asc': { name: 1, _id: 1 },
+  'name-desc': { name: -1, _id: -1 },
+}
+
+// (Product page ke Previous/Next: same category, "newest" order mein agla/pichhla product.)
+async function neighbours(product) {
+  const base = { isActive: true, categoryId: product.categoryId._id, _id: { $ne: product._id } }
+  const { createdAt: at, _id: id } = product
+  const pick = 'name slug images'
+  const [prev, next] = await Promise.all([
+    Product.findOne({ ...base, $or: [{ createdAt: { $gt: at } }, { createdAt: at, _id: { $gt: id } }] })
+      .sort({ createdAt: 1, _id: 1 })
+      .select(pick)
+      .lean(),
+    Product.findOne({ ...base, $or: [{ createdAt: { $lt: at } }, { createdAt: at, _id: { $lt: id } }] })
+      .sort({ createdAt: -1, _id: -1 })
+      .select(pick)
+      .lean(),
+  ])
+  const slim = (p) => (p ? { name: p.name, slug: p.slug, image: p.images?.[0]?.url || '' } : null)
+  return { prev: slim(prev), next: slim(next) }
 }
 
 // (Product ke saath category aur collection ka naam/slug bhi chahiye, link banane ke liye.)
@@ -104,5 +124,6 @@ export async function getProductBySlug(req, res) {
     .slice(0, 4)
     .map(serializeProduct)
 
-  res.json({ success: true, data: { ...serializeProduct(product), related } })
+  const { prev, next } = await neighbours(product)
+  res.json({ success: true, data: { ...serializeProduct(product), related, prev, next } })
 }

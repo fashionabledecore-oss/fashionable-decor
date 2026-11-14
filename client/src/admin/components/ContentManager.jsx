@@ -8,7 +8,7 @@ import FormAlert from './FormAlert'
 import EditingBanner from './EditingBanner'
 import AdminToast from './AdminToast'
 import { saveNewOrder } from '../reorder'
-import { rowState, useEditFocus, useSavedRow } from '../editFeedback'
+import { rowState, useInlineEditor, useSavedRow } from '../editFeedback'
 
 // (Reviews aur Instagram ka ek jaisa admin page: list (phone par cards), add/edit form,
 //  order up/down, show/hide, delete. Har page sirf apne fields aur card ka look deta hai.)
@@ -19,14 +19,13 @@ import { rowState, useEditFocus, useSavedRow } from '../editFeedback'
 // itemName(item) -> banner aur messages mein dikhne wala naam.
 function ContentManager({ kind, title, intro, addLabel, emptyText, note, toForm, toPayload, renderFields, renderItem, itemName = () => 'item' }) {
   const [version, setVersion] = useState(0)
-  const [editing, setEditing] = useState(null) // null | 'new' | item
+  const { editing, formKey, open, close, formProps } = useInlineEditor(itemName)
   const [notice, setNotice] = useState('')
   const [problem, setProblem] = useState('')
 
   const { data, loading, error, retry } = useAsync(() => adminListContent(kind), `admin-${kind}:${version}`)
   const items = data ?? []
   const reload = () => setVersion((v) => v + 1)
-  const formRef = useEditFocus(editing === 'new' ? 'new' : editing?._id)
   const [savedId, markSaved] = useSavedRow(Boolean(data) && !loading)
 
   const run = async (fn, message) => {
@@ -60,38 +59,36 @@ function ContentManager({ kind, title, intro, addLabel, emptyText, note, toForm,
           <h1 className="text-2xl font-bold text-walnut">{title}</h1>
           <p className="mt-1 max-w-xl text-sm text-ink/60">{intro}</p>
         </div>
-        {!editing && (
-          <button
-            type="button"
-            onClick={() => setEditing('new')}
-            className="inline-flex items-center gap-2 rounded-full bg-walnut px-5 py-2.5 text-sm font-medium text-white"
-          >
-            <Plus size={16} /> {addLabel}
-          </button>
-        )}
+        <button
+          type="button"
+          onClick={() => open('new')}
+          className="inline-flex items-center gap-2 rounded-full bg-walnut px-5 py-2.5 text-sm font-medium text-white"
+        >
+          <Plus size={16} /> {addLabel}
+        </button>
       </div>
 
       {note && <p className="mt-4 rounded-xl bg-butter px-4 py-3 text-sm text-ink">{note}</p>}
       <AdminToast notice={notice} problem={problem} onClose={() => { setNotice(''); setProblem('') }} />
 
       {editing && (
-        <div ref={formRef} className="mt-6 scroll-mt-4 space-y-3">
+        <div {...formProps} className="mt-6 scroll-mt-4 space-y-3" data-testid="inline-form">
           <EditingBanner
             name={editing === 'new' ? addLabel.replace(/^Add\s+/i, 'new ') : itemName(editing)}
             isNew={editing === 'new'}
-            onCancel={() => setEditing(null)}
+            onCancel={close}
           />
           <ContentForm
-            key={editing === 'new' ? 'new' : editing._id}
+            key={formKey}
             kind={kind}
             initial={editing === 'new' ? null : editing}
             nextOrder={items.length}
             toForm={toForm}
             toPayload={toPayload}
             renderFields={renderFields}
-            onCancel={() => setEditing(null)}
+            onCancel={close}
             onSaved={(message, id) => {
-              setEditing(null)
+              close()
               setProblem('')
               setNotice(message)
               markSaved(id)
@@ -134,7 +131,7 @@ function ContentManager({ kind, title, intro, addLabel, emptyText, note, toForm,
                 >
                   {item.isActive ? <><EyeOff size={14} /> Hide</> : <><Eye size={14} /> Show</>}
                 </button>
-                <button type="button" onClick={() => setEditing(item)} aria-label={`Edit ${itemName(item)}`} className="ml-auto p-2 text-walnut">
+                <button type="button" onClick={() => open(item)} aria-label={`Edit ${itemName(item)}`} className="ml-auto p-2 text-walnut">
                   <Pencil size={17} />
                 </button>
                 <button type="button" onClick={() => remove(item)} aria-label={`Delete ${itemName(item)}`} className="p-2 text-ink/40 hover:text-danger">

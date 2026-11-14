@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { Eye, EyeOff, ExternalLink, Images, Pencil, Plus, Search, Star, Trash2 } from 'lucide-react'
-import { adminDeleteProduct, adminGetCollections, adminGetProducts, adminUpdateProduct } from '../../services/api'
+import { adminDeleteProduct, adminGetCategories, adminGetCollections, adminGetProducts, adminUpdateProduct } from '../../services/api'
 import { useAsync } from '../../hooks/useAsync'
 import ImageBox from '../../components/common/ImageBox'
 import Loader from '../../components/common/Loader'
@@ -16,17 +16,28 @@ function AdminProducts() {
   const navigate = useNavigate()
   const [search, setSearch] = useState('')
   const [searchInput, setSearchInput] = useState('')
+  const [searchParams, setSearchParams] = useSearchParams()
   const [status, setStatus] = useState('all')
-  const [collection, setCollection] = useState('')
+  // (Filter URL mein rehte hain: Categories > "View products" seedha filter ke saath khulta hai, aur Back kaam karta hai.)
+  const collection = searchParams.get('collection') || ''
+  const category = searchParams.get('category') || ''
+  const setFilter = (changes) => {
+    const next = new URLSearchParams(searchParams)
+    Object.entries(changes).forEach(([k, val]) => (val ? next.set(k, val) : next.delete(k)))
+    setSearchParams(next, { replace: true })
+    setPage(1)
+  }
   const [page, setPage] = useState(1)
   const [version, setVersion] = useState(0)
   const [notice, setNotice] = useState(location.state?.notice ?? '')
   const [problem, setProblem] = useState('')
 
   const collections = useAsync(adminGetCollections, 'products-filter-collections')
+  const categories = useAsync(() => adminGetCategories(), 'products-filter-categories')
+  const categoryOptions = (categories.data ?? []).filter((c) => !collection || String(c.collectionId) === collection)
   const { data, loading, error } = useAsync(
-    () => adminGetProducts({ search, status, collection, page, limit: 20 }),
-    `admin-products:${search}:${status}:${collection}:${page}:${version}`,
+    () => adminGetProducts({ search, status, collection, category, page, limit: 20 }),
+    `admin-products:${search}:${status}:${collection}:${category}:${page}:${version}`,
   )
 
   const products = data?.data ?? []
@@ -36,8 +47,8 @@ function AdminProducts() {
 
   // (Save ka message ek hi baar: refresh ya Back par dobara na aaye.)
   useEffect(() => {
-    if (location.state) navigate(location.pathname, { replace: true, state: null })
-  }, [location.state, location.pathname, navigate])
+    if (location.state) navigate({ pathname: location.pathname, search: location.search }, { replace: true, state: null })
+  }, [location.state, location.pathname, location.search, navigate])
 
   const applySearch = (e) => {
     e.preventDefault()
@@ -122,10 +133,7 @@ function AdminProducts() {
 
         <select
           value={collection}
-          onChange={(e) => {
-            setCollection(e.target.value)
-            setPage(1)
-          }}
+          onChange={(e) => setFilter({ collection: e.target.value, category: '' })}
           aria-label="Filter by collection"
           className={selectClass}
         >
@@ -133,6 +141,20 @@ function AdminProducts() {
           {(collections.data ?? []).map((c) => (
             <option key={c._id} value={c._id}>
               {c.name}
+            </option>
+          ))}
+        </select>
+
+        <select
+          value={category}
+          onChange={(e) => setFilter({ category: e.target.value })}
+          aria-label="Filter by category"
+          className={selectClass}
+        >
+          <option value="">All categories</option>
+          {categoryOptions.map((c) => (
+            <option key={c._id} value={c._id}>
+              {collection ? c.name : `${c.collection?.name ?? ''} > ${c.name}`}
             </option>
           ))}
         </select>
@@ -208,7 +230,7 @@ function AdminProducts() {
                           <ExternalLink size={17} />
                         </Link>
                       )}
-                      <Link to={`/admin/products/${p._id}/edit`} aria-label={`Edit ${p.name}`} className="text-walnut hover:opacity-70">
+                      <Link to={`/admin/products/${p._id}/edit`} state={{ listSearch: location.search }} aria-label={`Edit ${p.name}`} className="text-walnut hover:opacity-70">
                         <Pencil size={17} />
                       </Link>
                       <button

@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { useEffect, useRef, useState } from 'react'
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { Plus, Trash2 } from 'lucide-react'
 import { adminCreateProduct, adminGetCategories, adminGetProduct, adminUpdateProduct } from '../../services/api'
 import { useAsync } from '../../hooks/useAsync'
@@ -55,12 +55,22 @@ function Check({ checked, onChange, children }) {
 
 function ProductFormInner({ initial, categories }) {
   const navigate = useNavigate()
+  const location = useLocation()
+  // (Save/Cancel ke baad wahi filter wali list, jahan se aaye the.)
+  const listPath = `/admin/products${location.state?.listSearch || ''}`
   const editing = Boolean(initial?._id)
   const [v, setV] = useState(() => toForm(initial))
   const [errors, setErrors] = useState({})
   const [alert, setAlert] = useState('')
   const [serverErrors, setServerErrors] = useState(null)
   const [saving, setSaving] = useState(false)
+
+  // (Form khulte hi page ke upar, heading par focus: owner ko turant dikhe ki kaunsa product khula hai.)
+  const headingRef = useRef(null)
+  useEffect(() => {
+    window.scrollTo(0, 0)
+    headingRef.current?.focus({ preventScroll: true })
+  }, [])
 
   const set = (name, value) => {
     setV((prev) => ({ ...prev, [name]: value }))
@@ -128,7 +138,7 @@ function ProductFormInner({ initial, categories }) {
     setServerErrors(null)
     try {
       const saved = editing ? await adminUpdateProduct(initial._id, payload) : await adminCreateProduct(payload)
-      navigate('/admin/products', {
+      navigate(listPath, {
         state: {
           notice: editing ? `"${payload.name}" saved.` : `"${payload.name}" added.`,
           savedId: saved?._id ?? initial?._id,
@@ -146,10 +156,10 @@ function ProductFormInner({ initial, categories }) {
   return (
     <form onSubmit={submit} noValidate className="max-w-4xl space-y-6">
       <div>
-        <Link to="/admin/products" className="text-sm text-walnut hover:underline">
+        <Link to={listPath} className="text-sm text-walnut hover:underline">
           Back to products
         </Link>
-        <h1 className="mt-2 text-2xl font-bold break-words text-walnut">
+        <h1 ref={headingRef} tabIndex={-1} className="mt-2 text-2xl font-bold break-words text-walnut outline-none">
           {editing ? (
             <>
               <span className="text-ink/60">Editing:</span> {initial.name}
@@ -194,8 +204,11 @@ function ProductFormInner({ initial, categories }) {
         <FormField label="Full description" name="description" as="textarea" rows={6} value={v.description} onChange={handleChange} error={errors.description} placeholder="Comfort, fabric, finish and any other details" />
       </Section>
 
-      <Section title="Images" hint="The first image is the main image shown on cards. Use the arrows to change the order.">
-        <ImageUploader images={v.images} onChange={(arr) => set('images', arr)} max={10} />
+      <Section
+        title="Photos"
+        hint="Up to 15 photos. The first photo is the main photo shown on cards. Use Set as main or the arrows to change the order."
+      >
+        <ImageUploader images={v.images} onChange={(arr) => set('images', arr)} max={15} />
       </Section>
 
       <Section title="Size and materials">
@@ -277,7 +290,7 @@ function ProductFormInner({ initial, categories }) {
         <button type="submit" disabled={saving} className="rounded-full bg-walnut px-8 py-3 text-sm font-medium text-white transition hover:brightness-110 disabled:opacity-60">
           {saving ? 'Saving...' : editing ? 'Save changes' : 'Add product'}
         </button>
-        <Link to="/admin/products" className="rounded-full border border-walnut/40 px-8 py-3 text-sm text-walnut">
+        <Link to={listPath} className="rounded-full border border-walnut/40 px-8 py-3 text-sm text-walnut">
           Cancel
         </Link>
       </div>
