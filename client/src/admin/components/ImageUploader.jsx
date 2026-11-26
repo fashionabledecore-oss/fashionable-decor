@@ -105,6 +105,8 @@ function ImageUploader({ images, onChange, max = 15, showAlt = true }) {
                 <img
                   src={img.url}
                   alt={img.alt || `Photo ${i + 1}`}
+                  loading="lazy"
+                  decoding="async"
                   className="photo-well aspect-[4/3] w-full rounded-xl object-contain"
                   data-testid="uploaded-photo"
                 />

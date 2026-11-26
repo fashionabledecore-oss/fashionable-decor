@@ -39,7 +39,8 @@ function Seo({ title, description, path, image, type = 'website', noindex = fals
   useEffect(() => {
     document.title = fullTitle
     setMeta('description', desc)
-    setMeta('robots', noindex ? 'noindex, nofollow' : 'index, follow')
+    // (Admin/NotFound par noindex; public pages par robots tag hata dete hain.)
+    setMeta('robots', noindex ? 'noindex, nofollow' : '')
     setTag('link', 'rel', 'canonical', 'href', noindex ? '' : url)
 
     setProperty('og:site_name', siteConfig.name)

@@ -1,6 +1,6 @@
 User-agent: *
+Allow: /
 Disallow: /admin
 
-# TODO: Replace https://www.example.com with the real domain before going live
-# /sitemap.xml is served by the backend.
-Sitemap: https://www.example.com/sitemap.xml
+# /sitemap.xml is served by the backend (proxied by Netlify, see _redirects).
+Sitemap: https://fashionabledecor.in/sitemap.xml

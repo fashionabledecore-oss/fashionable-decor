@@ -99,7 +99,8 @@ function InstagramSection() {
                 alt=""
                 tone={toneAt(i)}
                 doodle="chair"
-                width={260}
+                width={600}
+                sizes="256px"
                 ratio={16 / 9}
                 className="aspect-[9/16] w-full transition-transform duration-500 motion-safe:group-hover:scale-[1.03]"
               />

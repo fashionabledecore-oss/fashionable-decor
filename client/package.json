@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "vite build && node scripts/prerender-meta.mjs",
     "lint": "eslint .",
     "preview": "vite preview"
   },
@@ -26,6 +26,7 @@
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.6",
     "globals": "^17.12.0",
+    "sharp": "^0.35.5",
     "vite": "^8.3.0"
   }
 }

@@ -22,6 +22,24 @@ export function cloudinaryUrl(src, { width, height, fit = 'cover' } = {}) {
   return `${base}/upload/${parts.join(',')}/${path}`
 }
 
+// (Sirf width wala chhota helper: f_auto,q_auto,w_X,c_limit. Koi aur transformation pehle se ho toh URL waisa hi.)
+export function cldUrl(url, width) {
+  if (!isCloudinary(url)) return url
+  const i = url.indexOf('/upload/') + '/upload/'.length
+  const head = url.slice(0, i)
+  const rest = url.slice(i)
+  const t = `f_auto,q_auto,w_${width},c_limit/`
+  if (rest.startsWith('f_auto,q_auto/')) return head + t + rest.slice('f_auto,q_auto/'.length)
+  if (/^v\d+\//.test(rest)) return head + t + rest
+  return url
+}
+
+// (Cards ke liye 400w/800w/1200w srcSet. Non-Cloudinary par undefined.)
+export function cldSrcSet(url) {
+  if (!isCloudinary(url) || cldUrl(url, 400) === url) return undefined
+  return [400, 800, 1200].map((w) => `${cldUrl(url, w)} ${w}w`).join(', ')
+}
+
 // (1x aur 2x screens ke liye srcSet. Non-Cloudinary image par undefined.)
 export function cloudinarySrcSet(src, { width, height, fit } = {}) {
   if (!isCloudinary(src) || !width) return undefined

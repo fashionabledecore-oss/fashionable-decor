@@ -3,7 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import { ChevronDown, ChevronLeft, ChevronRight, MessageCircle, Phone, Ruler } from 'lucide-react'
 import { getProduct } from '../services/api'
 import { useAsync } from '../hooks/useAsync'
-import { siteConfig, inCity, getWhatsAppLink, phoneLink, SITE_URL, productLines } from '../config/site'
+import { siteConfig, productTitle, getWhatsAppLink, phoneLink, SITE_URL, productLines } from '../config/site'
 import { absoluteUrl, clip, useJsonLd } from '../utils/seo'
 import { cloudinaryUrl } from '../utils/cloudinary'
 import { productPath } from '../utils/paths'
@@ -92,7 +92,7 @@ function ProductDetail({ product }) {
   return (
     <>
       <Seo
-        title={`${product.name} | ${category.name}${inCity} | ${siteConfig.name}`}
+        title={productTitle(product.name, category.name)}
         description={description}
         path={path}
         image={images[0]?.url}
@@ -121,7 +121,7 @@ function ProductDetail({ product }) {
             <ProductGallery
               images={images}
               name={product.name}
-              fallbackAlt={`${product.name} - ${category.name} by ${siteConfig.name}`}
+              fallbackAlt={`${product.name} ${category.name.toLowerCase()} by ${siteConfig.name}, ${siteConfig.city}`}
             />
           </div>
 

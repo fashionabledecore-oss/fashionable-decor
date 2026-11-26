@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { ArrowUpRight } from 'lucide-react'
 import ImageBox from '../common/ImageBox'
+import { imageAlt } from '../../config/site'
 import { doodles } from '../common/doodleMap'
 
 // (Saare product lines barabar: Sofas sabse bada tile, baaki ek jaise tiles. Photo na ho toh clay placeholder.)
@@ -49,8 +50,9 @@ function Tile({ line, big = false }) {
       {line.image ? (
         <ImageBox
           src={line.image}
-          alt={line.name}
-          width={big ? 640 : 320}
+          alt={imageAlt(line.name)}
+          width={600}
+          sizes={big ? '(min-width: 768px) 50vw, 100vw' : '(min-width: 768px) 25vw, 50vw'}
           ratio={3 / 4}
           fit="contain"
           className={`mt-auto w-full rounded-[20px] ${box}`}

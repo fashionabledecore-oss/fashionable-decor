@@ -30,7 +30,7 @@ export function useJsonLd(id, data) {
   }, [id, json])
 }
 
-// (Address: Whitefield, Karnataka, IN. Koi streetAddress nahi. areaServed Bangalore.)
+// (Poora address siteConfig se. Koi geo, rating, review ya priceRange nahi.)
 export function businessSchema() {
   return {
     '@context': 'https://schema.org',
@@ -47,10 +47,13 @@ export function businessSchema() {
     founder: { '@type': 'Person', name: siteConfig.owner },
     address: {
       '@type': 'PostalAddress',
-      addressLocality: 'Whitefield',
-      addressRegion: 'Karnataka',
-      addressCountry: 'IN',
+      streetAddress: siteConfig.addressLine,
+      addressLocality: siteConfig.locality,
+      addressRegion: siteConfig.state,
+      postalCode: siteConfig.postalCode,
+      addressCountry: siteConfig.country,
     },
+    hasMap: siteConfig.mapUrl,
     areaServed: { '@type': 'City', name: siteConfig.city },
     keywords: keywords.join(', '),
     sameAs: [siteConfig.instagramUrl],

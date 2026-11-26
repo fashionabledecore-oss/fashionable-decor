@@ -1,6 +1,6 @@
 import { useSearchParams } from 'react-router-dom'
 import { Mail, MapPin, MessageCircle, Phone, Plus } from 'lucide-react'
-import { siteConfig, inCity, getWhatsAppLink, phoneLink } from '../config/site'
+import { siteConfig, inCity, getWhatsAppLink, phoneLink, cityLine } from '../config/site'
 import Seo from '../components/common/Seo'
 import PageHeader from '../components/common/PageHeader'
 import LeadForm from '../components/forms/LeadForm'
@@ -68,7 +68,17 @@ function Contact() {
             )}
             <li className="inline-flex items-start gap-3">
               <MapPin size={20} className="mt-1 shrink-0 text-terracotta" />
-              <span>{siteConfig.address || siteConfig.workLocation}</span>
+              <address className="not-italic">
+                {siteConfig.shopName}
+                <br />
+                {siteConfig.addressLine}
+                <br />
+                {cityLine}
+                <br />
+                <a href={siteConfig.mapUrl} target="_blank" rel="noopener noreferrer" className={linkClass}>
+                  Get directions
+                </a>
+              </address>
             </li>
           </ul>
         </div>

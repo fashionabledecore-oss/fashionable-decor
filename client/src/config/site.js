@@ -1,7 +1,7 @@
 // Business facts. Anything marked TODO(client) must be confirmed by Ainul Haq. Empty values are hidden.
 export const siteConfig = {
   name: 'Fashionable Decor',
-  tagline: 'Custom-made sofas from Whitefield, Bangalore',
+  tagline: 'Custom-made sofas from KR Puram, Bengaluru',
   owner: 'Ainul Haq',
   yearsInBusiness: 'Almost 7 years',
 
@@ -10,15 +10,24 @@ export const siteConfig = {
   phone: '+91 83189 25706',
   email: '', // TODO(client): business email (optional)
 
-  workLocation: 'Whitefield, Bangalore',
-  city: 'Bangalore',
-  address: '', // TODO(client): shop address once it is fixed (hidden while empty)
+  workLocation: 'KR Puram, Bengaluru',
+  city: 'Bengaluru',
+
+  // Full shop address (used by Contact, Footer, JSON-LD and the build-time prerender).
+  shopName: 'Fashionable Decor',
+  addressLine: 'Near Radiant Silver Bell Apartment, Kodigehalli, Sadarmangala Road, KR Puram',
+  locality: 'KR Puram',
+  state: 'Karnataka',
+  postalCode: '560067',
+  country: 'IN',
+  mapUrl: 'https://maps.app.goo.gl/1cEbW8tfx5pfveFi9',
+  areasServed: 'KR Puram, Kodigehalli, Whitefield, Mahadevapura, Marathahalli, Hoodi and all of Bengaluru',
 
   instagramHandle: 'fashionabledecore',
-  instagramUrl: 'https://www.instagram.com/fashionabledecore/',
+  instagramUrl: 'https://www.instagram.com/fashionabledecore',
   googleReviewsUrl: '', // TODO(client): Google reviews link (optional)
 
-  heroImageAlt: 'A custom-made sofa by Fashionable Decor in Whitefield, Bangalore',
+  heroImageAlt: 'A custom-made sofa by Fashionable Decor in KR Puram, Bengaluru',
 
   // TODO(client): Ainul Haq to approve before launch.
   ownerNote: [
@@ -41,7 +50,7 @@ export const siteConfig = {
     },
     {
       q: 'Where are you?',
-      a: 'All our work happens in Whitefield, Bangalore. Customers come to us from all over Bangalore.',
+      a: 'Our shop is near Radiant Silver Bell Apartment, Kodigehalli, Sadarmangala Road, KR Puram, Bengaluru 560067. Customers come to us from all over Bengaluru.',
     },
     {
       q: 'How do I enquire?',
@@ -52,12 +61,26 @@ export const siteConfig = {
   offersCustomisation: true,
 
   logo: '/favicon.svg', // TODO(client): real logo file
-  ogImage: '/images/hero.jpg',
+  ogImage: 'https://fashionabledecor.in/og-image.jpg', // 1200x630
 
-  defaultTitle: 'Custom Sofa Manufacturer in Whitefield, Bangalore | Fashionable Decor',
+  defaultTitle: 'Custom Sofas in KR Puram, Bengaluru | Fashionable Decor',
   defaultDescription:
-    'Fashionable Decor makes custom-made sofas in Whitefield, Bangalore. Our own team builds the frame and does the stitching and finishing. Also recliners, beds, headboards, dining, curtains and wallpaper.',
+    'Custom sofa manufacturer in KR Puram, Bengaluru, serving Whitefield and all of Bengaluru. Also recliners, beds, headboards, dining, curtains and wallpaper.',
 }
+
+// Product page title (runtime <Seo> and build-time prerender):
+// "<Product> - <Category> | Fashionable Decor, KR Puram, Bengaluru", area dropped if it goes over ~65 characters.
+export function productTitle(productName, categoryName) {
+  const head = categoryName ? `${productName} - ${categoryName}` : productName
+  const full = `${head} | ${siteConfig.name}, ${siteConfig.workLocation}`
+  return full.length <= 65 ? full : `${head} | ${siteConfig.name}`
+}
+
+// Image alt for product, category and collection photos: "<name> by Fashionable Decor, Bengaluru"
+export const imageAlt = (name) => `${name} by ${siteConfig.name}, ${siteConfig.city}`
+
+// "KR Puram, Bengaluru, Karnataka 560067"
+export const cityLine = `${siteConfig.locality}, ${siteConfig.city}, ${siteConfig.state} ${siteConfig.postalCode}`
 
 // The product range: the single list. `slug` must match the collection slug in admin
 // (server/src/data/catalogueStructure.js). `interest` preselects the lead form.
@@ -80,18 +103,19 @@ export const productLines = [
 ]
 
 export const keywords = [
-  'custom sofa manufacturer in Whitefield',
-  'sofa manufacturer in Bangalore',
-  'custom sofa Bangalore',
-  'recliner sofa Bangalore',
-  'L-shape sofa Bangalore',
+  'custom sofa manufacturer in KR Puram',
+  'sofa manufacturer in Bengaluru',
+  'custom sofa Whitefield',
+  'recliner sofa Bengaluru',
+  'L-shape sofa Bengaluru',
 ]
 
-export const SITE_URL = window.location.origin
+// Real domain (canonical, og:url, og:image, JSON-LD). No trailing slash.
+export const SITE_URL = 'https://fashionabledecor.in'
 
 export const phoneLink = `tel:${siteConfig.phone.replace(/\s/g, '')}`
 
-// (" in Whitefield, Bangalore" page titles ke liye.)
+// (" in KR Puram, Bengaluru" page titles ke liye.)
 export const inCity = ` in ${siteConfig.workLocation}`
 
 export function getWhatsAppLink(message = 'Hello, I want to enquire about a sofa.') {

@@ -8,6 +8,10 @@ import Loader from '../../components/common/Loader'
 import ErrorState from '../../components/common/ErrorState'
 import FormAlert from '../components/FormAlert'
 import ImageUploader from '../components/ImageUploader'
+import ProductNamePicker from '../components/ProductNamePicker'
+import { useCategoryNames } from '../useCategoryNames'
+import { presetsFor } from '../../config/productNames'
+import { isDuplicate, parseName, pickerName } from '../../utils/productNames'
 
 const toNumber = (v) => (v === '' || v === null || v === undefined ? null : Number(v))
 
@@ -78,6 +82,32 @@ function ProductFormInner({ initial, categories }) {
   }
   const handleChange = (e) => set(e.target.name, e.target.value)
 
+  // (Naam: category ke chips se chuna jaata hai. Edit mein purana naam tab tak waisa hi rehta hai jab tak admin kuch na badle.)
+  const categoryNameOf = (id) => categories.find((c) => c._id === id)?.name ?? ''
+  const [initialPick] = useState(() => parseName(initial?.name, presetsFor(categoryNameOf(initial?.categoryId))))
+  const [pick, setPick] = useState(initialPick)
+  const untouched =
+    editing &&
+    v.categoryId === initial.categoryId &&
+    pick.choice === initialPick.choice &&
+    pick.custom === initialPick.custom &&
+    pick.detail === initialPick.detail
+  const finalName = untouched ? initial.name : pickerName(pick)
+
+  const changePick = (next) => {
+    setPick(next)
+    if (errors.name) setErrors((prev) => ({ ...prev, name: undefined }))
+  }
+  // (Category badli toh chuna hua chip hatao, detail rehne do.)
+  const changeCategory = (e) => {
+    handleChange(e)
+    setPick((p) => ({ ...p, choice: '' }))
+  }
+
+  const names = useCategoryNames(v.categoryId)
+  const others = (names.data ?? []).filter((p) => p._id !== initial?._id).map((p) => p.name)
+  const duplicate = Boolean(finalName) && isDuplicate(finalName, others)
+
   // (Categories ko collection ke hisaab se group karke dikhate hain.)
   const groups = categories.reduce((acc, c) => {
     const key = c.collection?.name ?? 'Other'
@@ -93,7 +123,7 @@ function ProductFormInner({ initial, categories }) {
     if (saving) return
 
     const found = {}
-    if (v.name.trim().length < 2) found.name = 'Please enter the product name.'
+    if (finalName.trim().length < 2) found.name = 'Please choose or enter the product name.'
     if (!v.categoryId) found.categoryId = 'Please choose a category.'
 
     const dims = {}
@@ -116,7 +146,7 @@ function ProductFormInner({ initial, categories }) {
     }
 
     const payload = {
-      name: v.name.trim(),
+      name: finalName.trim(),
       categoryId: v.categoryId,
       shortDescription: v.shortDescription.trim(),
       description: v.description.trim(),
@@ -173,8 +203,6 @@ function ProductFormInner({ initial, categories }) {
       <FormAlert message={alert} errors={serverErrors} />
 
       <Section title="Basic details">
-        <FormField label="Product name" name="name" value={v.name} onChange={handleChange} error={errors.name} required placeholder="e.g. Grey L-Shape Sofa" />
-
         <div>
           <label htmlFor="field-categoryId" className="text-sm font-medium text-ink">
             Category <span className="text-terracotta">*</span>
@@ -183,7 +211,7 @@ function ProductFormInner({ initial, categories }) {
             id="field-categoryId"
             name="categoryId"
             value={v.categoryId}
-            onChange={handleChange}
+            onChange={changeCategory}
             className={`mt-1 w-full rounded-xl border bg-white px-4 py-3 text-ink outline-none focus:border-walnut ${errors.categoryId ? 'border-danger' : 'border-beige'}`}
           >
             <option value="">Choose a category</option>
@@ -199,6 +227,16 @@ function ProductFormInner({ initial, categories }) {
           </select>
           {errors.categoryId && <p className="mt-1 text-sm text-danger">{errors.categoryId}</p>}
         </div>
+
+        <ProductNamePicker
+          idPrefix="field-name"
+          categoryName={categoryNameOf(v.categoryId)}
+          value={pick}
+          onChange={changePick}
+          error={errors.name}
+          preview={finalName}
+          warning={duplicate ? 'A product with this name already exists in this category. Add a detail to tell them apart.' : ''}
+        />
 
         <FormField label="Short description" name="shortDescription" value={v.shortDescription} onChange={handleChange} error={errors.shortDescription} placeholder="One line shown on product cards" />
         <FormField label="Full description" name="description" as="textarea" rows={6} value={v.description} onChange={handleChange} error={errors.description} placeholder="Comfort, fabric, finish and any other details" />

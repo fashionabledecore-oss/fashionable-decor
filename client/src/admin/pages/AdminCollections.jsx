@@ -249,7 +249,7 @@ function AdminCollections() {
               className={`scroll-mt-4 rounded-2xl bg-white p-3 shadow-sm transition ${c.isActive ? '' : 'opacity-60'} ${rowState(c._id, editing, savedId)}`}
             >
               <div className="flex items-center gap-3">
-                <ImageBox src={c.bannerImage?.url} alt={c.name} className="h-12 w-16 shrink-0 rounded-lg" width={160} />
+                <ImageBox src={c.bannerImage?.url} alt={c.name} className="h-12 w-16 shrink-0 rounded-lg" width={200} />
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-medium text-ink">
                     {c.name}

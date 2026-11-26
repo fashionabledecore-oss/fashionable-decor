@@ -1,16 +1,23 @@
 <!doctype html>
-<html lang="en">
+<html lang="en-IN">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#FBF3EE" />
 
-    <!-- Favicons: SVG for modern browsers, .ico and apple-touch-icon as fallbacks (add these files to client/public) -->
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <link rel="icon" href="/favicon.ico" sizes="32x32" />
+    <!-- Favicons (made by scripts/make-assets.mjs) -->
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
 
     <link rel="preconnect" href="https://res.cloudinary.com" crossorigin />
+    <link
+      rel="preload"
+      as="image"
+      imagesrcset="/images/hero-800.webp 800w, /images/hero-1600.webp 1600w"
+      imagesizes="(min-width: 768px) 560px, 100vw"
+      fetchpriority="high"
+    />
 
     <!-- Fonts: Fraunces (display), Figtree (body), Caveat (handwritten notes). display=swap keeps text visible. -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -20,24 +27,56 @@
       href="https://fonts.googleapis.com/css2?family=Caveat:wght@500..700&family=Figtree:wght@400..700&family=Fraunces:opsz,wght@9..144,500..700&display=swap"
     />
 
-    <!-- Default tags. Each page updates these through the <Seo /> component. -->
-    <title>Custom Sofa Manufacturer in Whitefield, Bangalore | Fashionable Decor</title>
+    <!-- Default tags. Each page updates these through <Seo />; scripts/prerender-meta.mjs rewrites them per route at build. -->
+    <title>Custom Sofas in KR Puram, Bengaluru | Fashionable Decor</title>
     <meta
       name="description"
-      content="Fashionable Decor makes custom-made sofas in Whitefield, Bangalore. Our own team builds the frame and does the stitching and finishing. Also recliners, beds, headboards, dining, curtains and wallpaper."
+      content="Custom sofa manufacturer in KR Puram, Bengaluru, serving Whitefield and all of Bengaluru. Also recliners, beds, headboards, dining, curtains and wallpaper."
     />
+    <link rel="canonical" href="https://fashionabledecor.in/" />
 
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="Fashionable Decor" />
     <meta property="og:locale" content="en_IN" />
-    <meta property="og:title" content="Custom Sofa Manufacturer in Whitefield, Bangalore | Fashionable Decor" />
+    <meta property="og:title" content="Custom Sofas in KR Puram, Bengaluru | Fashionable Decor" />
     <meta
       property="og:description"
-      content="Custom-made sofas by our own team in Whitefield, Bangalore. Enquire on WhatsApp."
+      content="Custom sofa manufacturer in KR Puram, Bengaluru, serving Whitefield and all of Bengaluru. Also recliners, beds, headboards, dining, curtains and wallpaper."
     />
-    <meta property="og:image" content="/images/hero.jpg" />
+    <meta property="og:url" content="https://fashionabledecor.in/" />
+    <meta property="og:image" content="https://fashionabledecor.in/og-image.jpg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:image" content="/images/hero.jpg" />
+    <meta name="twitter:title" content="Custom Sofas in KR Puram, Bengaluru | Fashionable Decor" />
+    <meta
+      name="twitter:description"
+      content="Custom sofa manufacturer in KR Puram, Bengaluru, serving Whitefield and all of Bengaluru. Also recliners, beds, headboards, dining, curtains and wallpaper."
+    />
+    <meta name="twitter:image" content="https://fashionabledecor.in/og-image.jpg" />
+
+    <script type="application/ld+json" id="ld-business">
+      {
+        "@context": "https://schema.org",
+        "@type": "FurnitureStore",
+        "@id": "https://fashionabledecor.in/#business",
+        "name": "Fashionable Decor",
+        "url": "https://fashionabledecor.in/",
+        "telephone": "+918318925706",
+        "image": "https://fashionabledecor.in/og-image.jpg",
+        "sameAs": ["https://www.instagram.com/fashionabledecore"],
+        "areaServed": { "@type": "City", "name": "Bengaluru" },
+        "hasMap": "https://maps.app.goo.gl/1cEbW8tfx5pfveFi9",
+        "address": {
+          "@type": "PostalAddress",
+          "streetAddress": "Near Radiant Silver Bell Apartment, Kodigehalli, Sadarmangala Road, KR Puram",
+          "addressLocality": "KR Puram",
+          "addressRegion": "Karnataka",
+          "postalCode": "560067",
+          "addressCountry": "IN"
+        }
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>

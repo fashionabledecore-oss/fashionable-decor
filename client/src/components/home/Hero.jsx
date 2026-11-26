@@ -5,7 +5,9 @@ import { DoodleSpark, Underlined } from '../common/Doodles'
 import ImageBox from '../common/ImageBox'
 import Sticker from '../common/Sticker'
 
-// (Hero photo: client/public/images/hero.jpg, owner khud daalega. File na ho toh clay placeholder.)
+// (Hero photo: client/public/images/hero-800.webp + hero-1600.webp (scripts/make-assets.mjs se). File na ho toh clay placeholder.)
+// (Mobile par poori width; md+ par grid ka aadha hissa, max ~560px. index.html ke preload mein bhi yahi sizes.)
+const HERO_SIZES = '(min-width: 768px) 560px, 100vw'
 function HeroPhoto() {
   const [failed, setFailed] = useState(false)
 
@@ -15,10 +17,13 @@ function HeroPhoto() {
         <ImageBox tone="coral" alt={siteConfig.heroImageAlt} doodle="chair" className="blob-a h-full w-full" />
       ) : (
         <img
-          src="/images/hero.jpg"
+          src="/images/hero-800.webp"
+          srcSet="/images/hero-800.webp 800w, /images/hero-1600.webp 1600w"
+          sizes={HERO_SIZES}
           width={800}
           height={720}
           alt={siteConfig.heroImageAlt}
+          loading="eager"
           fetchPriority="high"
           decoding="async"
           onError={() => setFailed(true)}

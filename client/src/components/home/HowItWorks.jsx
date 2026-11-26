@@ -2,7 +2,7 @@ const steps = [
   { title: 'Tell us what you want', text: 'Message us on WhatsApp with the sofa you have in mind. A photo of your room helps.' },
   { title: 'Our team builds the frame', text: 'Our own team builds the sofa frame.' },
   { title: 'Stitching and finishing', text: 'We do the stitching, upholstery and finishing ourselves.' },
-  { title: 'We deliver', text: 'Anywhere in Bangalore.' },
+  { title: 'We deliver', text: 'Anywhere in Bengaluru.' },
 ]
 
 function HowItWorks() {

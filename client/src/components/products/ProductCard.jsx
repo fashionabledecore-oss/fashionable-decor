@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import { MessageCircle } from 'lucide-react'
-import { getWhatsAppLink } from '../../config/site'
+import { getWhatsAppLink, siteConfig, SITE_URL } from '../../config/site'
 import { productPath, mainImage } from '../../utils/paths'
 import ImageBox from '../common/ImageBox'
 
@@ -9,7 +9,9 @@ import ImageBox from '../common/ImageBox'
 function ProductCard({ product, compact = false }) {
   const path = productPath(product)
   const image = mainImage(product)
-  const alt = image?.alt || [product.name, product.category?.name].filter(Boolean).join(' - ')
+  const alt =
+    image?.alt ||
+    `${[product.name, product.category?.name?.toLowerCase()].filter(Boolean).join(' ')} by ${siteConfig.name}, ${siteConfig.city}`
 
   if (compact) {
     return (
@@ -18,7 +20,7 @@ function ProductCard({ product, compact = false }) {
           <ImageBox
             src={image?.url}
             alt={alt}
-            width={360}
+            width={600}
             ratio={3 / 4}
             fit="contain"
             className="aspect-[4/3] w-full rounded-[20px] transition-transform duration-500 motion-safe:group-hover:scale-[1.02]"
@@ -29,14 +31,14 @@ function ProductCard({ product, compact = false }) {
     )
   }
 
-  const message = `Hello, I want to enquire about ${product.name}. ${window.location.origin}${path}`
+  const message = `Hello, I want to enquire about ${product.name}. ${SITE_URL}${path}`
   return (
     <article className="group flex flex-col">
       <Link to={path} className="block overflow-hidden rounded-[28px]">
         <ImageBox
           src={image?.url}
           alt={alt}
-          width={480}
+          width={600}
           ratio={3 / 4}
           fit="contain"
           className="aspect-[4/3] w-full rounded-[28px] transition-transform duration-500 motion-safe:group-hover:scale-[1.02]"

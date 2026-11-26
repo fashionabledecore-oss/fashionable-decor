@@ -11,7 +11,7 @@ function Collections() {
   return (
     <>
       <Seo
-        title={`Sofas, Recliners, Beds and More${inCity} | ${siteConfig.name}`}
+        title={`All Products${inCity} | ${siteConfig.name}`}
         description={`Sofas made by our own team${inCity}, plus recliners, beds, headboards, dining, curtains and wallpaper. Enquire with ${siteConfig.name} on WhatsApp.`}
       />
       <div className="mx-auto max-w-6xl px-4 pb-24 sm:px-6">

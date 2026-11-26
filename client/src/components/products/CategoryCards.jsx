@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { ArrowUpRight } from 'lucide-react'
 import ImageBox from '../common/ImageBox'
+import { imageAlt } from '../../config/site'
 import { toneAt } from '../../utils/tones'
 
 // (Collection page: har type (category) ka card, admin ki category photo ke saath. Photo poori dikhti hai, 4:3 box.)
@@ -15,8 +16,9 @@ function CategoryCards({ collectionSlug, categories }) {
           >
             <ImageBox
               src={c.image?.url}
-              alt={c.name}
-              width={320}
+              alt={imageAlt(c.name)}
+              width={600}
+              sizes="(min-width: 1024px) 25vw, 50vw"
               ratio={3 / 4}
               fit="contain"
               tone={toneAt(i)}

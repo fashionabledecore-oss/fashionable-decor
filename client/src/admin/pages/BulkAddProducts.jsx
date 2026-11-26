@@ -6,6 +6,9 @@ import { useAsync } from '../../hooks/useAsync'
 import Loader from '../../components/common/Loader'
 import ErrorState from '../../components/common/ErrorState'
 import { checkFile, resizeImage } from '../resizeImage'
+import ProductNamePicker from '../components/ProductNamePicker'
+import { useCategoryNames } from '../useCategoryNames'
+import { nextNumber, pickerName } from '../../utils/productNames'
 
 const MAX_ROWS = 50 // (ek baar mein 50 photos)
 const MAX_GALLERY = 15 // (ek product mein zyada se zyada 15 photos)
@@ -13,17 +16,8 @@ const PARALLEL = 2
 
 const selectClass = 'mt-1 w-full rounded-xl border border-beige bg-white px-4 py-3 text-ink outline-none focus:border-walnut'
 
-// ("grey_l-shape sofa.jpg" -> "Grey L Shape Sofa")
-function nameFromFile(fileName) {
-  return fileName
-    .replace(/\.[^.]+$/, '')
-    .replace(/[-_]+/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim()
-    .toLowerCase()
-    .replace(/\b\w/g, (ch) => ch.toUpperCase())
-    .slice(0, 120)
-}
+const pad = (n) => String(n).padStart(2, '0')
+const EMPTY_PICK = { choice: '', custom: '', detail: '' }
 
 const randomSuffix = () => Math.random().toString(36).slice(2, 6)
 const slugify = (text) =>
@@ -54,8 +48,10 @@ function BulkAddProducts() {
   // (Categories > "Add photos" se aaye toh collection aur category pehle se chuni hui.)
   const [collectionId, setCollectionId] = useState(searchParams.get('collection') || '')
   const [categoryId, setCategoryId] = useState(searchParams.get('category') || '')
-  const [galleryName, setGalleryName] = useState('')
-  const [rows, setRows] = useState([]) // ({ id, file, preview, name, status: ready|working|done|failed, error })
+  // (Naam chips se, poore batch ke liye. Har product "<naam> NN", category ke sabse bade number ke aage se.)
+  const [pick, setPick] = useState(EMPTY_PICK)
+  const names = useCategoryNames(categoryId)
+  const [rows, setRows] = useState([]) // ({ id, file, preview, status: ready|working|done|failed, error })
   const [problem, setProblem] = useState('')
   const [running, setRunning] = useState(false)
   const [progress, setProgress] = useState({ done: 0, total: 0 })
@@ -78,6 +74,13 @@ function BulkAddProducts() {
   const categoryList = categories.data.filter((c) => String(c.collectionId) === collectionId)
   const category = categoryList.find((c) => c._id === categoryId)
   const pending = rows.filter((r) => r.status !== 'done')
+
+  const finalName = pickerName(pick)
+  const namesReady = !categoryId || Boolean(names.data)
+  const start = finalName && names.data ? Number(nextNumber(finalName, names.data.map((p) => p.name))) : 1
+  // (Separate: har pending photo ka apna number. Gallery: ek product, ek number.)
+  const plannedName = new Map(pending.map((r, i) => [r.id, `${finalName} ${pad(start + (gallery ? 0 : i))}`]))
+  const previewSuffix = gallery || pending.length <= 1 ? ` ${pad(start)}` : ` ${pad(start)} to ${pad(start + pending.length - 1)}`
 
   const updateRow = (id, patch) => setRows((prev) => prev.map((r) => (r.id === id ? { ...r, ...patch } : r)))
 
@@ -126,12 +129,10 @@ function BulkAddProducts() {
       id: nextId++,
       file,
       preview: URL.createObjectURL(file),
-      name: nameFromFile(file.name),
       status: 'ready',
       error: '',
     }))
     setRows((prev) => [...prev, ...added])
-    if (gallery && !galleryName && added[0]) setGalleryName(added[0].name)
     if (skipped.length) setProblem(`${skipped.join('. ')}.`)
   }
 
@@ -168,11 +169,11 @@ function BulkAddProducts() {
   }
 
   // Mode 1: har photo ek product.
-  const createSeparate = async () => {
+  const createSeparate = async (planned) => {
     let added = 0
     const busy = await runQueue(pending, async (row) => {
       const uploaded = await uploadRow(row)
-      const name = row.name.trim()
+      const name = planned.get(row.id)
       try {
         await createProduct({
           name,
@@ -192,7 +193,7 @@ function BulkAddProducts() {
   }
 
   // Mode 2: saari photos ek product ki gallery (row ke order mein, pehli = main).
-  const createGallery = async () => {
+  const createGallery = async (planned) => {
     const uploads = new Map()
     const busy = await runQueue(pending, async (row) => {
       uploads.set(row.id, await uploadRow(row))
@@ -200,7 +201,7 @@ function BulkAddProducts() {
     const ok = pending.filter((r) => uploads.has(r.id))
     if (ok.length === 0) return { added: 0, photos: 0, busy }
 
-    const name = galleryName.trim()
+    const name = planned.get(pending[0].id)
     const images = ok.map((r, i) => {
       const u = uploads.get(r.id)
       return { url: u.url, publicId: u.publicId, alt: `${name} - photo ${i + 1}`.slice(0, 150) }
@@ -222,18 +223,17 @@ function BulkAddProducts() {
     setResult(null)
     if (!collectionId || !categoryId) return setProblem('Please choose a collection and a category.')
     if (pending.length === 0) return setProblem('Please select some photos first.')
-    if (gallery) {
-      if (galleryName.trim().length < 2) return setProblem('Please enter the product name (at least 2 letters).')
-      if (pending.length > MAX_GALLERY) return setProblem(`One product can have at most ${MAX_GALLERY} photos.`)
-    } else if (pending.find((r) => r.name.trim().length < 2)) {
-      return setProblem('Every product needs a name of at least 2 letters.')
-    }
+    if (finalName.trim().length < 2) return setProblem('Please choose the product name.')
+    if (!names.data) return setProblem('Existing product names are still loading. Please wait a moment.')
+    if (gallery && pending.length > MAX_GALLERY) return setProblem(`One product can have at most ${MAX_GALLERY} photos.`)
 
     setRunning(true)
     setProgress({ done: 0, total: pending.length })
     const total = pending.length
-    const res = gallery ? await createGallery() : await createSeparate()
+    const res = gallery ? await createGallery(plannedName) : await createSeparate(plannedName)
     setRunning(false)
+    // (Naye naam aa gaye; agla batch unke aage se number lega.)
+    names.retry()
     setResult({ ...res, failed: total - res.photos })
     if (res.error) setProblem(`The product could not be created: ${res.error}`)
   }
@@ -241,7 +241,6 @@ function BulkAddProducts() {
   const clearDone = () => {
     rows.filter((r) => r.status === 'done').forEach((r) => URL.revokeObjectURL(r.preview))
     setRows((prev) => prev.filter((r) => r.status !== 'done'))
-    if (gallery) setGalleryName('')
     setResult(null)
   }
 
@@ -300,6 +299,7 @@ function BulkAddProducts() {
             onChange={(e) => {
               setCollectionId(e.target.value)
               setCategoryId('')
+              setPick((p) => ({ ...p, choice: '' }))
             }}
             className={selectClass}
           >
@@ -320,7 +320,10 @@ function BulkAddProducts() {
             id="bulk-category"
             value={categoryId}
             disabled={running || !collectionId}
-            onChange={(e) => setCategoryId(e.target.value)}
+            onChange={(e) => {
+              setCategoryId(e.target.value)
+              setPick((p) => ({ ...p, choice: '' }))
+            }}
             className={selectClass}
           >
             <option value="">{collectionId ? 'Choose a category' : 'Choose a collection first'}</option>
@@ -332,22 +335,26 @@ function BulkAddProducts() {
             ))}
           </select>
         </div>
-        {gallery && (
-          <div className="sm:col-span-2">
-            <label htmlFor="bulk-gallery-name" className="text-sm font-medium text-ink">
-              Product name <span className="text-terracotta">*</span>
-            </label>
-            <input
-              id="bulk-gallery-name"
-              value={galleryName}
-              onChange={(e) => setGalleryName(e.target.value)}
-              disabled={running}
-              maxLength={120}
-              placeholder="e.g. Grey L-Shape Sofa"
-              className={selectClass}
-            />
-          </div>
-        )}
+        <div className="sm:col-span-2">
+          <ProductNamePicker
+            idPrefix="bulk-name"
+            categoryName={category?.name ?? ''}
+            value={pick}
+            onChange={setPick}
+            disabled={running}
+            preview={finalName}
+            previewSuffix={names.data ? previewSuffix : ''}
+          />
+          {categoryId && names.loading && <p className="mt-1 text-xs text-ink/60">Loading existing names for numbering...</p>}
+          {categoryId && names.error && (
+            <p className="mt-1 text-xs text-danger">
+              Could not load existing names ({names.error.message}).{' '}
+              <button type="button" onClick={names.retry} className="underline">
+                Try again
+              </button>
+            </p>
+          )}
+        </div>
         {hiddenNote && <p className="text-xs text-terracotta sm:col-span-2">{hiddenNote}</p>}
       </section>
 
@@ -371,14 +378,14 @@ function BulkAddProducts() {
         </button>
         <p className="mt-2 text-xs text-ink/50">
           JPG, PNG or WebP, up to {maxRows} photos at a time. Photos are made smaller before upload (1600 px).
-          {gallery ? ' The first photo is the main photo.' : ' The name comes from the file name, you can change it below.'}
+          {gallery ? ' The first photo is the main photo.' : ' Each photo becomes its own product, numbered 01, 02 and so on.'}
         </p>
 
         {rows.length > 0 && (
           <ul className="mt-4 divide-y divide-beige">
             {rows.map((r, i) => (
               <li key={r.id} className="flex items-center gap-3 py-3" data-testid="bulk-row">
-                <img src={r.preview} alt="" className="photo-well h-14 w-14 shrink-0 rounded-lg object-contain" />
+                <img src={r.preview} alt="" loading="lazy" decoding="async" className="photo-well h-14 w-14 shrink-0 rounded-lg object-contain" />
                 <div className="min-w-0 flex-1">
                   {gallery ? (
                     <p className="flex items-center gap-2 text-sm text-ink/70">
@@ -396,14 +403,9 @@ function BulkAddProducts() {
                       <span className="truncate">Photo {i + 1}</span>
                     </p>
                   ) : (
-                    <input
-                      value={r.name}
-                      onChange={(e) => updateRow(r.id, { name: e.target.value })}
-                      disabled={running || r.status === 'done'}
-                      maxLength={120}
-                      aria-label={`Product name ${i + 1}`}
-                      className={`w-full rounded-lg border px-3 py-2 text-sm outline-none focus:border-walnut disabled:bg-beige/30 ${r.name.trim().length < 2 ? 'border-danger' : 'border-beige'}`}
-                    />
+                    <p className="truncate text-sm text-ink/70">
+                      {r.status === 'done' ? `Photo ${i + 1}: added` : finalName && namesReady ? plannedName.get(r.id) : `Photo ${i + 1}`}
+                    </p>
                   )}
                   {r.status === 'failed' && <p className="mt-1 text-xs text-danger">Failed: {r.error}</p>}
                 </div>
@@ -487,7 +489,7 @@ function BulkAddProducts() {
       <button
         type="button"
         onClick={createAll}
-        disabled={running || pending.length === 0}
+        disabled={running || pending.length === 0 || finalName.trim().length < 2 || !names.data}
         className="inline-flex items-center gap-2 rounded-full bg-walnut px-8 py-3 text-sm font-medium text-white transition hover:brightness-110 disabled:opacity-60"
       >
         {running && <Loader2 size={16} className="animate-spin" />}

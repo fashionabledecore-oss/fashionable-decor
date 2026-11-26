@@ -2,6 +2,9 @@ import ProductCollection from '../models/ProductCollection.js'
 import Category from '../models/Category.js'
 import Product from '../models/Product.js'
 
+const SITE_DOMAIN = 'https://fashionabledecor.in'
+
+// (Client router ke public routes: App.jsx. /admin kabhi nahi.)
 const STATIC_PAGES = [
   { path: '/', priority: '1.0', changefreq: 'weekly' },
   { path: '/collections', priority: '0.9', changefreq: 'weekly' },
@@ -29,8 +32,8 @@ function urlEntry(base, { path, lastmod, changefreq, priority }) {
 
 // GET /api/sitemap.xml (sirf active collections, categories aur products)
 export async function getSitemap(req, res) {
-  // (Site ka address: CLIENT_URL ka pehla domain.)
-  const base = (process.env.CLIENT_URL || `${req.protocol}://${req.get('host')}`)
+  // (Site ka address: CLIENT_URL ka pehla domain, warna asli domain. Kabhi backend ka host nahi.)
+  const base = (process.env.CLIENT_URL || SITE_DOMAIN)
     .split(',')[0]
     .trim()
     .replace(/\/+$/, '')

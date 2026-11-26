@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { siteConfig, phoneLink } from '../../config/site'
+import { siteConfig, phoneLink, cityLine, getWhatsAppLink } from '../../config/site'
 
 function Footer() {
   return (
@@ -9,9 +9,33 @@ function Footer() {
         <div>
           <p className="font-display text-2xl font-semibold">{siteConfig.name}</p>
           <p className="mt-1 text-muted">Custom-made sofas, {siteConfig.workLocation}</p>
-          <p className="mt-3 flex flex-wrap gap-x-6 font-semibold">
+          <address className="mt-3 text-sm text-muted not-italic">
+            {siteConfig.shopName}
+            <br />
+            {siteConfig.addressLine}
+            <br />
+            {cityLine}
+            <br />
+            <a
+              href={siteConfig.mapUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex min-h-11 items-center font-semibold text-ink underline-offset-4 hover:underline"
+            >
+              Get directions
+            </a>
+          </address>
+          <p className="mt-1 flex flex-wrap gap-x-6 font-semibold">
             <a href={phoneLink} className="inline-flex min-h-11 items-center underline-offset-4 hover:underline">
               {siteConfig.phone}
+            </a>
+            <a
+              href={getWhatsAppLink()}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex min-h-11 items-center underline-offset-4 hover:underline"
+            >
+              WhatsApp
             </a>
             <a
               href={siteConfig.instagramUrl}

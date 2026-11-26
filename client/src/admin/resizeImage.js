@@ -1,7 +1,9 @@
-// (Upload se pehle browser mein photo chhoti: lambi side max 1600 px, quality 0.8.
-//  JPEG JPEG hi rehta hai; PNG/WebP WebP bante hain (transparency bachi rahe).)
-export const MAX_SIDE = 1600
+// (Upload se pehle browser mein photo chhoti: lambi side max 1200 px, WebP 0.78.
+//  Browser WebP na bana sake toh JPEG 0.8. Chhoti JPEG/WebP (<=1200px, <150 KB) waise hi jaati hai.)
+export const MAX_SIDE = 1200
 export const QUALITY = 0.8
+const WEBP_QUALITY = 0.78
+const SMALL_BYTES = 150 * 1024
 export const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp']
 export const MAX_PICK_MB = 20
 
@@ -16,14 +18,17 @@ export async function resizeImage(file) {
   }
   try {
     const scale = Math.min(1, MAX_SIDE / Math.max(bitmap.width, bitmap.height))
+    const isWebOk = file.type === 'image/webp' || file.type === 'image/jpeg'
+    if (scale === 1 && file.size < SMALL_BYTES && isWebOk) return file
     const canvas = document.createElement('canvas')
     canvas.width = Math.max(1, Math.round(bitmap.width * scale))
     canvas.height = Math.max(1, Math.round(bitmap.height * scale))
     canvas.getContext('2d').drawImage(bitmap, 0, 0, canvas.width, canvas.height)
 
-    const type = file.type === 'image/jpeg' ? 'image/jpeg' : 'image/webp'
-    const blob = await toBlob(canvas, type, QUALITY)
-    if (!blob || blob.type !== type) return file
+    let blob = await toBlob(canvas, 'image/webp', WEBP_QUALITY)
+    if (!blob || blob.type !== 'image/webp') blob = await toBlob(canvas, 'image/jpeg', QUALITY)
+    if (!blob) return file
+    const type = blob.type
     // (Photo pehle se chhoti thi aur nayi badi ban gayi, toh asli hi bhejo.)
     if (scale === 1 && blob.size >= file.size) return file
     const base = file.name.replace(/\.[^.]+$/, '')

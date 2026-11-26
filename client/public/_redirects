@@ -1,5 +1,6 @@
 # Netlify rules: /api and /sitemap.xml go to the Render backend, everything else opens the React app.
-# TODO: Replace fashionable-decor-api.onrender.com with the real Render backend URL.
+# Prerendered pages (dist/<route>/index.html from scripts/prerender-meta.mjs) are served first because
+# the SPA fallback below is not forced (no "!"); every other route falls back to /index.html.
 
 /api/*        https://fashionable-decor-api2.onrender.com/api/:splat    200
 /sitemap.xml  https://fashionable-decor-api2.onrender.com/api/sitemap.xml  200

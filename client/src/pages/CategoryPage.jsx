@@ -3,7 +3,7 @@ import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { Loader2 } from 'lucide-react'
 import { getCollection, getProducts } from '../services/api'
 import { useAsync } from '../hooks/useAsync'
-import { siteConfig, inCity } from '../config/site'
+import { siteConfig, inCity, imageAlt } from '../config/site'
 import EmptyRange from '../components/common/EmptyRange'
 import NotFound from '../components/common/NotFound'
 import LoadState from '../components/common/LoadState'
@@ -151,8 +151,9 @@ function ProductList({ collectionSlug, category, sort, onSort }) {
             {category.image?.url && (
               <ImageBox
                 src={category.image.url}
-                alt={category.name}
-                width={560}
+                alt={imageAlt(category.name)}
+                width={600}
+                sizes="(min-width: 480px) 448px, 100vw"
                 ratio={3 / 4}
                 fit="contain"
                 className="mx-auto aspect-[4/3] w-full max-w-md rounded-[28px]"

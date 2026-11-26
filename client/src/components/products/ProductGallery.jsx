@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { ChevronLeft, ChevronRight, Expand, X } from 'lucide-react'
-import { cloudinaryUrl } from '../../utils/cloudinary'
+import { cldUrl } from '../../utils/cloudinary'
 import ImageBox from '../common/ImageBox'
 import PhotoFrame from '../common/PhotoFrame'
 
@@ -34,7 +34,7 @@ function ProductGallery({ images, name, fallbackAlt }) {
   const go = (dir) => setIndex((i) => (i + dir + count) % count)
   const swipe = useSwipe(() => count > 1 && go(-1), () => count > 1 && go(1))
   const active = images[index]
-  const altFor = (img, i) => img?.alt || (i === 0 ? fallbackAlt : `${name} - photo ${i + 1}`)
+  const altFor = (img, i) => img?.alt || (i === 0 ? fallbackAlt : `${fallbackAlt || name} - photo ${i + 1}`)
   const closeViewer = useCallback(() => setViewer(false), [])
 
   return (
@@ -51,7 +51,8 @@ function ProductGallery({ images, name, fallbackAlt }) {
               tone="coral"
               src={active?.url}
               alt={altFor(active, index)}
-              width={720}
+              width={1200}
+              sizes="(min-width: 1024px) 50vw, 100vw"
               ratio={3 / 4}
               aspect={3 / 4}
               fit="contain"
@@ -98,7 +99,7 @@ function ProductGallery({ images, name, fallbackAlt }) {
                 aria-pressed={i === index}
                 className={`clay block rounded-[16px] p-1 ${i === index ? 'clay-mustard clay-pressed' : 'clay-paper clay-press'}`}
               >
-                <ImageBox src={img.url} alt="" className="h-12 w-16 rounded-[12px] sm:h-15 sm:w-20" width={80} ratio={3 / 4} fit="contain" />
+                <ImageBox src={img.url} alt="" className="h-12 w-16 rounded-[12px] sm:h-15 sm:w-20" width={200} ratio={3 / 4} fit="contain" />
               </button>
             </li>
           ))}
@@ -165,8 +166,10 @@ function Viewer({ images, index, setIndex, name, altFor, onClose }) {
       <div className="relative min-h-0 flex-1" {...swipe} onClick={(e) => e.target === e.currentTarget && onClose()}>
         <img
           key={img.url}
-          src={cloudinaryUrl(img.url, { width: 1600 })}
+          src={cldUrl(img.url, 1200)}
           alt={altFor(img, index)}
+          loading="lazy"
+          decoding="async"
           className="pointer-events-none absolute inset-0 m-auto h-full w-full object-contain p-2 sm:p-6"
         />
         {count > 1 && (
